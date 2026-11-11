@@ -1,0 +1,2 @@
+# HOSHIKAI
+hi，claude
