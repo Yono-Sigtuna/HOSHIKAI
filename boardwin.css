@@ -1,0 +1,109 @@
+/* 星海社 · 板块页 / 标签页 · 子板块条与工具栏（「星图窗 · 轨道环」）
+   ==================================================================
+   用户 2026-11-02 从 `_boardtabs.html` 里选定 **星图窗 · 轨道环**（第 7 版）：
+     · 子板块条 = 一块收小的观测窗（1.5px 墨蓝边、内 rim 2px、格 padding 6/12/9，约 42px 高）
+     · 底纹 = 同心轨道环（圆心压在窗下沿之外，窗里只看见三道金弧）+ 站点星野
+     · 选中 = 名字下方一条金发丝线；工具栏 = 同一块皮的小号（28px 键）+ 键底金线
+   亮/暗两套主题各有自己的环色与星点，全部走站点令牌。
+
+   只覆盖 `.subtabs` 与 `.bd__bar` 里的 `.seg` / `.sel`：
+   板块页与标签页共用这套工具栏，所以两页都引本文件；其它页面不受影响。 */
+
+/* ══════════════ 子板块条 ══════════════ */
+.subtabs {
+  display: inline-flex; flex-wrap: wrap; gap: 0;
+  margin-top: 18px; padding: 2px;
+  border: 1.5px solid var(--hud-edge); border-radius: 5px; overflow: hidden;
+  background: var(--hud-deep);
+  background-image:
+    radial-gradient(circle at 50% calc(100% + 112px),
+      transparent 0 116px, var(--hud-gold-w) 116px 117px,
+      transparent 117px 136px, var(--hud-gold-w) 136px 137px,
+      transparent 137px 156px, var(--hud-gold-w) 156px 157px,
+      transparent 157px),
+    var(--hud-stars), var(--hud-cloud), var(--hud-deep);
+  box-shadow: 2px 2px 0 var(--hud-shadow), inset 0 0 0 1px var(--hud-ice-w);
+  color: var(--hud-ink);
+}
+[data-theme="dark"] .subtabs {
+  background-image:
+    radial-gradient(circle at 50% calc(100% + 112px),
+      transparent 0 116px, var(--hud-gold-w) 116px 117px,
+      transparent 117px 136px, var(--hud-gold-w) 136px 137px,
+      transparent 137px 156px, var(--hud-gold-w) 156px 157px,
+      transparent 157px),
+    var(--hud-stars), var(--hud-cloud), var(--hud-deep);
+}
+
+.subtabs__t {
+  position: relative;
+  padding: 6px 12px 9px;
+  border: 0; border-radius: 0; background: none;
+  font-size: 13px; color: var(--hud-ink-soft);
+}
+.subtabs__t + .subtabs__t { box-shadow: inset 1px 0 0 var(--hud-gold-w); }
+/* 当前项的那颗内联星由金发丝线接管 */
+.subtabs__t .i { display: none; }
+.subtabs__t:hover { color: var(--hud-ink); border: 0; background: none; }
+.subtabs__t.is-on {
+  color: var(--hud-ink); border: 0; background: none; font-weight: 600;
+}
+.subtabs__t::after {
+  content: ""; position: absolute; left: 12px; right: 12px; bottom: 6px; height: 1px;
+  background: var(--hud-gold-s);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .18s var(--ease);
+}
+.subtabs__t:hover::after,
+.subtabs__t.is-on::after { transform: scaleX(1); }
+/* 板子 overflow:hidden 会裁掉外描边：焦点框改画在格子里 */
+.subtabs__t:focus-visible { outline: 2px solid var(--c700); outline-offset: -3px; border-radius: 2px; }
+
+/* ══════════════ 工具栏（卡片 / 列表 · 排序） ══════════════ */
+.bd__bar .seg {
+  display: inline-flex; gap: 2px; padding: 2px;
+  border: 1.5px solid var(--hud-edge); border-radius: 5px;
+  background: var(--hud-deep);
+  box-shadow: 2px 2px 0 var(--hud-shadow);
+}
+.bd__bar .seg__b {
+  height: 28px; padding: 0 11px;
+  border-radius: 3px; background: none;
+  font-size: 13px; color: var(--hud-ink-soft);
+}
+.bd__bar .seg__b:hover {
+  color: var(--hud-ink);
+  background: color-mix(in srgb, var(--hud-ink) 6%, transparent);
+}
+.bd__bar .seg__b[aria-pressed="true"] {
+  color: var(--hud-ink); background: none; font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--hud-gold-s);
+}
+.bd__bar .seg__b:focus-visible { outline: 2px solid var(--c700); outline-offset: -2px; }
+
+.bd__bar .sel {
+  border: 1.5px solid var(--hud-edge); border-radius: 5px;
+  background: var(--hud-deep);
+  box-shadow: 2px 2px 0 var(--hud-shadow);
+}
+.bd__bar .sel select {
+  height: 30px; padding: 0 28px 0 11px;
+  border: 0; border-radius: 5px; background: transparent;
+  font-size: 13px; color: var(--hud-ink);
+}
+.bd__bar .sel select:focus-visible { outline: 2px solid var(--c700); outline-offset: 1px; }
+.bd__bar .sel__arrow { right: 9px; color: var(--hud-gold-s); }
+
+/* ══════════════ 窄屏 ══════════════ */
+@media (max-width: 900px) {
+  .subtabs__t { padding: 6px 10px 8px; }
+  .subtabs__t::after { left: 10px; right: 10px; }
+}
+@media (max-width: 620px) {
+  .subtabs__t { padding: 5px 9px 7px; font-size: 12px; }
+  .subtabs__t::after { left: 9px; right: 9px; }
+  .bd__bar .seg__b { padding: 0 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .subtabs__t::after { transition: none !important; }
+}

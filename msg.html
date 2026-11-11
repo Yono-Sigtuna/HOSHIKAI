@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>消息 · 星海社</title>
+<meta name="description" content="星海社 galgame 论坛 · 消息：回复 / 收藏 / 提到 / 关注 / 站务 五类通知，带已读状态">
+<script>document.documentElement.classList.add('js')</script>
+<script>(function(){try{var t=localStorage.getItem('hoshikai:theme');if(t!=='dark'&&t!=='light'){t='light';}document.documentElement.dataset.theme=t;}catch(e){}})();</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8' fill='%234a72e8'/%3E%3Ccircle cx='19' cy='5' r='2.4' fill='%23dfbd65'/%3E%3C/svg%3E">
+<!-- ⚠️ 资源路径一律**绝对**：本页由 ./space/1/ 这样的干净 URL 提供，
+     相对写法会被解析成 ./space/1/style.css ⇒ 404 ⇒ 整页裸奔（踩过一次，
+     截图里 logo 是未样式化的文字、sprite 图标按原尺寸铺了一屏）。
+     站里 board.html / topic.html 同样用 ./ 开头，就是为这个。 -->
+<script>/* 开屏只在本次会话第一次进站播；之后首帧前直接跳过 */
+try{if(localStorage.getItem("hoshikai:boot")==="1")document.documentElement.classList.add("boot-skip")}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="./fonts/fonts.css">
+<link rel="stylesheet" id="fontCss" href="./fonts/fonts.css" media="print" onload="this.media='all'">
+<script src="./boot.js" defer></script>
+<link rel="stylesheet" href="./style.css">
+<!-- ⚠️ forum.css 只为**分页组件**（.pg__*）而引 —— 那套样式住在板块页的样式表里，
+     而「全部」子页要用的就是站里那一套分页。board.js 文件头自己写着「两个页面不共享 JS 工具」，
+     所以 CSS 复用、逻辑照抄一份，不为了这一页去改板块页。 -->
+<link rel="stylesheet" href="./forum.css">
+<link rel="stylesheet" href="./space.css">
+<link rel="stylesheet" href="./msg.css">
+<link rel="stylesheet" href="./menu.css">
+</head>
+<body>
+
+<!-- 开屏：字体没到不进场（逻辑见 boot.js，样式见 style.css 的 .boot 段） -->
+<div class="boot" id="boot" role="status" aria-live="polite">
+  <div class="boot__box">
+    <svg class="boot__dial" viewBox="0 0 200 200" aria-hidden="true">
+      <circle class="boot__ring" cx="100" cy="100" r="78"/>
+      <circle class="boot__ring boot__ring--i" cx="100" cy="100" r="58"/>
+      <ellipse class="boot__ec" cx="100" cy="100" rx="86" ry="32" transform="rotate(-23 100 100)"/>
+      <circle class="boot__pl" r="5.5"/>
+    </svg>
+    <p class="boot__t">星海社<span>正在校准星盘</span></p>
+    <div class="boot__bar" aria-hidden="true"></div>
+    <p class="boot__s">载入星图字体…</p>
+  </div>
+</div>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-orbit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.12 2.12 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.12 2.12 0 0 0 1.597-1.16z"/></symbol>
+  <symbol id="i-reply" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-stars4" viewBox="0 0 24 24"><g fill="currentColor">
+    <path d="M15.4 2.6c.5 3.6 2.1 5.2 5.7 5.7-3.6.5-5.2 2.1-5.7 5.7-.5-3.6-2.1-5.2-5.7-5.7 3.6-.5 5.2-2.1 5.7-5.7Z"/>
+    <path d="M6.1 10.9c.32 2.3 1.35 3.33 3.65 3.65-2.3.32-3.33 1.35-3.65 3.65-.32-2.3-1.35-3.33-3.65-3.65 2.3-.32 3.33-1.35 3.65-3.65Z"/>
+    <circle cx="18.6" cy="14.9" r="1.5"/><circle cx="7.2" cy="20.4" r="1.05"/></g></symbol>
+  <!-- ⚠️ 下面七枚是**站内 hud.js 那套天文功能键图标**的逐字副本（k-atlas / k-mark / k-star4 /
+       k-lockon / k-zenith / k-dusk / k-scope）。hud.js 那份 sprite 是它自己注入的、不共享，
+       所以本页要自己带一份。⚠️ 改 hud.js 里那几枚时，这里要同步（与三页 sprite 副本同一条规矩）。
+       实心部件必须显式 fill="currentColor" stroke="none"：.i 的默认是描边（fill:none）。 -->
+  <symbol id="k-atlas" viewBox="0 0 24 24"><!-- 目录：星表 —— 每目一粒星点 + 一条目线 -->
+    <circle cx="4.6" cy="7" r="1.6" fill="currentColor" stroke="none"/>
+    <circle cx="4.6" cy="12" r="1.6" fill="currentColor" stroke="none"/>
+    <circle cx="4.6" cy="17" r="1.6" fill="currentColor" stroke="none"/>
+    <path d="M8.8 7h11.6M8.8 12h11.6M8.8 17h11.6"/></symbol>
+  <symbol id="k-mark" viewBox="0 0 24 24"><!-- 续读：观测书签，带上一枚星 -->
+    <path d="M7.2 3.4h9.6v17.4l-4.8-3.6-4.8 3.6z"/>
+    <path d="M12 4.8l.73 1.87L14.6 7.4l-1.87.73L12 10l-.73-1.87L9.4 7.4l1.87-.73z"
+          fill="currentColor" stroke="none"/></symbol>
+  <symbol id="k-star4" viewBox="0 0 24 24"><!-- 收藏：本征星芒（站点「重要」的记号） -->
+    <path d="M12 3.4 14.24 9.76 20.6 12l-6.36 2.24L12 20.6l-2.24-6.36L3.4 12l6.36-2.24z"
+          fill="currentColor" stroke="none"/></symbol>
+  <symbol id="k-lockon" viewBox="0 0 24 24"><!-- 关注：观测框夹住一枚星芒 -->
+    <path d="M3.6 7.8V5.4A1.8 1.8 0 0 1 5.4 3.6h2.4M16.2 3.6h2.4a1.8 1.8 0 0 1 1.8 1.8v2.4M20.4 16.2v2.4a1.8 1.8 0 0 1-1.8 1.8h-2.4M7.8 20.4H5.4a1.8 1.8 0 0 1-1.8-1.8v-2.4"/>
+    <path d="M12 8.7l.92 2.38L15.3 12l-2.38.92L12 15.3l-.92-2.38L8.7 12l2.38-.92z"
+          fill="currentColor" stroke="none"/></symbol>
+  <symbol id="k-zenith" viewBox="0 0 24 24"><!-- 回顶：天顶 —— 地平线上一条升到天顶记号的线 -->
+    <path d="M3.4 20.4h17.2M12 20.4V7.2M9.4 9.8 12 7.2l2.6 2.6"/><circle cx="12" cy="4.4" r="1.4"/></symbol>
+  <symbol id="k-dusk" viewBox="0 0 24 24"><!-- 夜间：暮线 —— 地平线 + 沉日 + 星 -->
+    <path d="M3 16.8h18"/><path d="M8.2 16.8A3.8 3.8 0 0 0 15.8 16.8"/>
+    <path d="M16.8 7l.67 1.73L19.2 9.4l-1.73.67L16.8 11.8l-.67-1.73L14.4 9.4l1.73-.67z"
+          fill="currentColor" stroke="none"/></symbol>
+  <symbol id="k-scope" viewBox="0 0 24 24"><!-- 看背景：望远镜 —— 口大根小的截锥 + 口外一枚星 -->
+    <path d="M6.8 17.6 16.52 9.72 12.28 5.48 4.4 15.2z"/>
+    <path d="M19.6 2.2l.67 1.73L22 4.6l-1.73.67L19.6 7l-.67-1.73L17.2 4.6l1.73-.67z"
+          fill="currentColor" stroke="none"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="wrap topbar__inner">
+    <a class="brand" href="./">
+      <span class="brand__mark"><svg class="i"><use href="#i-orbit"/></svg></span>
+      <span class="brand__text"><strong>星海社</strong><em>HOSHIKAI</em></span>
+    </a>
+    <nav class="nav" id="nav" aria-label="主导航">
+      <a href="./"><i><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-stars4"/></svg></i>首页</a>
+      <a href="./forum/1-1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>星图馆</a>
+      <a href="./forum/2-1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>创作所</a>
+      <a href="./forum/3-1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>观测台</a>
+      <a href="./space/1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>个人空间</a>
+      <a href="./msg/" aria-current="page"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>消息</a>
+    </nav>
+    <div class="tools">
+      <form class="search" role="search" action="./search/" method="get">
+        <svg class="i"><use href="#i-search"/></svg>
+        <input type="search" name="q" placeholder="搜索作品 / 帖子 / 用户" aria-label="站内搜索">
+      </form>
+      <button class="theme-tg" id="themeTg" type="button" aria-label="切换到夜间模式" aria-pressed="false">
+        <svg class="theme-tg__moon" aria-hidden="true"><use href="#i-moon"/></svg>
+        <svg class="theme-tg__sun" aria-hidden="true"><use href="#i-sun"/></svg>
+      </button>
+      <a class="btn btn--ghost" href="./login/">登录</a>
+      <a class="btn btn--solid" href="./register/">注册</a>
+    </div>
+  </div>
+</header>
+
+<main id="top" class="wrap">
+  <nav class="sp-crumb" aria-label="面包屑">
+    <a href="./">首页</a> › 观测台 › <span id="spCrumb"><b>消息</b></span>
+  </nav>
+  <div id="msg"></div>
+</main>
+
+<footer class="footer">
+  <!-- ⚠️ 整块照抄 v3p 首页的 .title：四层背景（CG / 极光 / 星盘 / 流星）+ 内容层 .title__in。
+       星盘和菜单的 DOM 由 footer.js 补；.title 里就地写死深底文字令牌，不跟主题走。 -->
+  <section class="title" aria-label="站点标题画面">
+    <div class="title__bg" aria-hidden="true"></div>
+    <div class="title__aur" aria-hidden="true"></div>
+    <svg class="dial title__dial" aria-hidden="true"></svg>
+    <div class="title__sky" aria-hidden="true"><span class="shoot" style="--x:62%;--y:6%;--a:32deg;--dur:13s;--del:1.5s"></span><span class="shoot" style="--x:78%;--y:18%;--a:28deg;--dur:17s;--del:6.5s"></span><span class="shoot" style="--x:40%;--y:4%;--a:38deg;--dur:19s;--del:11s"></span></div>
+    <div class="wrap title__in">
+      <div class="title__lead">
+        <p class="title__eye">HOSHIKAI<span> · GALGAME OBSERVERS</span> · <span data-logdate></span></p>
+        <p class="title__logo"><span class="title__mk"><span class="lt title__c" style="--i:0">星</span><span class="lt title__c" style="--i:1">海</span><span class="lt title__c" style="--i:2">社</span><svg class="title__orb" viewBox="0 0 200 60" aria-hidden="true"><ellipse cx="100" cy="30" rx="96" ry="22"/><circle class="title__moon" r="4"><animateMotion dur="11s" repeatCount="indefinite" path="M4 30a96 22 0 1 0 192 0a96 22 0 1 0-192 0"/></circle></svg></span><span class="title__en">HOSHIKAI · Night Log</span></p>
+        <p class="title__tag" data-tagline></p>
+        <div class="menuw"><svg class="menu__cst" aria-hidden="true"></svg><ol class="menu">
+        <li><a class="menu__i" href="./sitemap/"><span class="menu__k">SITEMAP</span><span class="menu__t">站点地图</span><span class="menu__d">全站页面索引</span></a></li>
+        <li><a class="menu__i" href="./rules/"><span class="menu__k">RULES</span><span class="menu__t">版规总则</span><span class="menu__d">观测前先读这个</span></a></li>
+        <li><a class="menu__i" href="./links/"><span class="menu__k">LINKS</span><span class="menu__t">友情链接</span><span class="menu__d">邻接的天文台</span></a></li>
+        <li><a class="menu__i" href="./contact/"><span class="menu__k">CONTACT</span><span class="menu__t">联系我们</span><span class="menu__d">给理事会发信</span></a></li>
+        <li><span class="menu__i is-off" aria-disabled="true"><span class="menu__k">HISTORY</span><span class="menu__t">历史</span><span class="menu__d">观测记录 · 还没做</span></span></li>
+        </ol></div>
+      </div>
+      <dl class="title__sys" aria-label="站点读数">
+        <div><dt>观测者</dt><dd data-stat="members">—</dd></div>
+        <div><dt>星体</dt><dd data-stat="threads">—</dd></div>
+        <div><dt>今夜新帖</dt><dd data-stat="todayPosts">—</dd></div>
+        <div><dt>在台</dt><dd data-stat="online">—</dd></div>
+      </dl>
+      <div class="title__ann">
+        <span class="title__plate">理事会<small data-ann-tag></small></span>
+        <p class="title__annT"><a href="./board.html?b=1-1" data-ann-title></a></p>
+        <p class="title__annB"><span class="sr" data-ann-body></span><span class="tw" aria-hidden="true"></span><span class="caret" aria-hidden="true"></span></p>
+        <svg class="title__next" viewBox="0 0 10 8" aria-hidden="true"><path d="M0 0l5 8 5-8z" fill="currentColor"/></svg>
+      </div>
+    </div>
+  </section>
+  <div class="wrap footer__note"></div>
+</footer>
+
+<script src="./shared/data.js"></script>
+<script src="./shared/threads.js"></script>
+<script src="./theme.js"></script>
+<script src="./session.js"></script>
+<script src="./msg.data.js"></script>
+<script src="./msg.js"></script>
+
+<!-- 反向验证的注入点：只有带 `?css=` / `?js=` 时才做任何事，平时一行都不执行。
+     ⚠️ 造坏从 URL 进、不写文件 —— 写文件那套会偶发读到上一版，而且**还原失败是静默的**。 -->
+<script>(function () {
+  var q = new URLSearchParams(location.search);
+  var dec = function (s) { return decodeURIComponent(escape(atob(s))); };
+  var css = q.get('css'), js = q.get('js');
+  if (css) { try { var st = document.createElement('style'); st.textContent = dec(css); document.head.appendChild(st); } catch (e) { console.error('inject css 失败', e); } }
+  if (js) { try { (0, eval)(dec(js)); } catch (e) { console.error('inject js 失败', e); } }
+})();</script>
+<script src="./menu.js"></script>
+<script src="./starbtn.js"></script>
+<script src="./footer.js"></script>
+</body>
+</html>

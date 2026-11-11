@@ -1,0 +1,307 @@
+/* 星海社 · 登录页 / 注册页
+   只补这两页独有的东西：页首那条「星轨」（一条弧 + 你的星）与表单面板。
+   颜色一律取 style.css 的令牌与 `--hue-*` 派生，本文件不新增颜色字面量
+   （例外只有星核上那一点白色高光 —— 与 `.rec__cover::after` / `.orn` 里的
+   装饰性白/金同属一种：**两套主题下都要保持恒定的闪光**，不跟着翻转）。
+
+   ⚠️ 这个文件里的每一个形状**都不是新发明的**，来源如下（改的时候别丢）：
+     · 页首那句   = `FORUM.tagline`，与页脚同一句（「在无数条时间线里…」）
+     · 那条弧     = 站内 `.orbit` / `.fs__arc` 的二次贝塞尔（M… Q…），几何由 JS 按真实像素算，
+                    与 `.orbit` 的做法一致（`.js` 守卫 + `is-drawn` 触发描边生长）
+     · 弧上的十字星点 = `.nav a i` 与 `.orbit__spark` 的 node 形状（`M-5 0H5M0-5V5`）
+     · 那颗星     = `.cstStar` 的三层画法：光晕（模糊大圆）/ 星核（实心）/ 高光点
+     · 星的**颜色** = 站内给你头像上色的那一个哈希 `hueOf()`（app.js:54 / board.js:36 / topic.js:36）
+     · 星在弧上的**位置** = 同一个哈希换个盐 —— 于是**同名的星永远落在同一处**
+     · 口令强度   = `.mag` 的星等（`magnitudeGlow()` 驱动 `--glowAmt`），与帖子用同一把尺
+     · 表单面板   = `.tpForm` 的配方（1.5px --c500 + `linear-gradient(180deg,--surface,--c100)` + --glow）
+                    + `.orn` 角饰（hud.js 的播放器面板也在用同一个）
+     · 输入框     = `.tpForm__box` / `.pg__jump input` 的配方（1.5px --line + --r-sm + 聚焦转 --c700）
+   换句话说：这两页是**用站里已有的零件搭出来的**，不是套了一个通用登录模板。 */
+
+/* ============ 版面 ============ */
+.auth {
+  /* ⚡ 容器查询上下文：本页的 `cqw` 相对内容栏解析（不再跟视口走）。
+     ⚠️ 挂在这里而不是 main —— 同 topic 页的理由：`container-type` 附带
+        `contain: layout`，会把 `position: fixed` 后代改成相对本元素定位。
+        登录/注册页的 `.toast` 在 body 级，`.auth` 里没有 fixed 元素，安全。 */
+  container-type: inline-size;
+  /* 星的颜色范围：亮色下压深一点才在近白底上立得住，暗色下提亮。
+     只有一个色相（--ah）是变量，饱和度/明度由主题定 —— 与站里 `--av-bg-l` / `--av-fg-l` 同一手法。 */
+  --auth-s: 82%;
+  --auth-l: 46%;
+  margin: 26px 0 8px;
+}
+[data-theme="dark"] .auth { --auth-s: 90%; --auth-l: 68%; }
+
+.auth__stage { text-align: center; }
+
+.auth__h1 {
+  margin: 0 auto;
+  max-width: 24em;
+  font-family: var(--font-display);
+  font-size: clamp(21px, 3.1cqw, 36px);
+  font-weight: 600;
+  line-height: 1.62;
+  letter-spacing: .02em;
+  color: var(--ink-deep);
+}
+.auth__lede {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  /* ⚠️ 用 --ink 而不是 --ink-soft：这两行小字是**直接压在 CG 上**的（首页的文字都在卡片里，
+     所以这是站里第一次遇到）。实测 7 张 CG 全量：--ink-soft 的最坏点只有 3.3~3.8:1，
+     不到起手模板要求的 4.5:1；换成 --ink 后最坏点约 5.9:1。**只改字色，背景一字不动。** */
+  color: var(--ink);
+}
+
+/* ============ 星轨：一条弧 + 弧上的那颗星 ============ */
+.auth__chart {
+  position: relative;
+  height: clamp(92px, 11.5cqw, 146px);
+  margin: 10px 0 0;
+  /* 底色随你的星微微染上一点同色相 —— 站里 `.cst` 面板就是这么做的（radial + hue）。
+     ⚠️ 必须用 `closest-side` 收尾：否则渐变在**盒子边缘**还没退到透明，
+     底边会留下一道硬接缝（第一版写 `at var(--x) 108%` 就是那样）。
+     `closest-side` 让椭圆正好贴住最近的边，数学上保证四条边都归零。 */
+  background: radial-gradient(closest-side at var(--x, 50%) var(--y, 50%),
+              hsl(var(--ah, 218) var(--auth-s) var(--auth-l) / .14), transparent);
+  transition: background .5s var(--ease);
+}
+.auth__arcsvg { display: block; width: 100%; height: 100%; overflow: visible; }
+.auth__arc {
+  fill: none;
+  stroke: var(--c500);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+/* 描边生长：与 `.orbit__line` 同一套（`.js` 守卫，避免无 JS 时线是断的） */
+.js .auth__arc { stroke-dasharray: 3000; stroke-dashoffset: 3000;
+                 transition: stroke-dashoffset 1.15s var(--ease) .1s; }
+.js .auth__chart.is-drawn .auth__arc { stroke-dashoffset: 0; }
+/* 弧上三枚十字星点：形状同 `.nav a i` 与 `.orbit__spark`（M-5 0H5M0-5V5） */
+.auth__dot {
+  fill: none;
+  stroke: var(--y600);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.js .auth__dots { opacity: 0; transition: opacity .5s var(--ease) .55s; }
+.js .auth__chart.is-drawn .auth__dots { opacity: 1; }
+
+/* 那颗星。--x / --y / --ah 由 auth.js 写在 .auth__chart 上，这里只是读。 */
+.auth__star {
+  position: absolute;
+  left: var(--x, 50%);
+  top: var(--y, 50%);
+  width: 0; height: 0;                 /* 零尺寸锚点，三层各以自己的中心对齐它 */
+  transform: translate(-50%, -50%);
+  transition: left .55s var(--ease), top .55s var(--ease), opacity .4s var(--ease);
+  opacity: 1;
+}
+.auth__star > i { position: absolute; left: 0; top: 0; border-radius: 50%; }
+.auth__star-halo {
+  width: 54px; height: 54px; margin: -27px 0 0 -27px;
+  background: radial-gradient(circle, hsl(var(--ah, 218) var(--auth-s) var(--auth-l) / .55) 0%, transparent 68%);
+}
+.auth__star-core {
+  width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+  background: hsl(var(--ah, 218) var(--auth-s) var(--auth-l));
+  /* 高光：恒定白点（两主题都要） —— 同 `.rec__cover::after` 的星点 */
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .92) inset,
+              0 0 calc(6px + var(--auth-glow, 0) * 14px) hsl(var(--ah, 218) 92% 62% / .85);
+}
+/* 未命名时：星停在弧顶、暗着，当作「这里会有东西」的位置提示 */
+.auth__chart.is-idle .auth__star { opacity: .55; }
+.auth__chart.is-idle .auth__star-halo { width: 40px; height: 40px; margin: -20px 0 0 -20px; }
+
+.auth__readout {
+  margin: 2px 0 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink);          /* 同 .auth__lede：压在 CG 上的小字要用 --ink，别用 --ink-soft */
+  min-height: 1.6em;
+}
+.auth__readout b { font-weight: 700; color: var(--ink-deep); }
+/* `.h`（括号里那个名字）原本是 --ink-faint，也一起提到 --ink：
+   压在 CG 上的小字不设第二档浅色，免得又出现一个够不到 4.5:1 的点。 */
+
+/* ============ 表单面板 ============ */
+.auth__panel {
+  position: relative;
+  overflow: hidden;                     /* 给 .orn 当裁刀 —— 与 hud.js 的播放器面板同一用法 */
+  width: min(430px, 100%);
+  margin: 18px auto 0;
+  padding: 20px 22px 18px;
+  border: 1.5px solid var(--c500);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  box-shadow: var(--glow);
+}
+.auth__panel .orn { opacity: .5; }
+
+.auth__cap {
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-deep);
+}
+
+/* 错误摘要（可聚焦、列到字段、role=alert）—— 见 auth.js 的 focusErrors() */
+.auth__err {
+  margin: 0 0 14px;
+  padding: 10px 12px 11px;
+  border: 1.5px solid var(--hot);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+.auth__err:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; }
+.auth__err h2 { margin: 0 0 5px; font-family: var(--font-body); font-size: 13.5px; font-weight: 700; color: var(--hot-link); }
+.auth__err ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+.auth__err a { color: var(--link); }
+
+/* ============ 字段 ============ */
+.auth__f { margin: 0 0 14px; }
+.auth__fhead { display: flex; align-items: center; gap: 8px; min-height: 26px; }
+.auth__lb {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  letter-spacing: .02em;
+}
+/* 标签右侧那条金线 —— 抄 `.nav::after`（站里「当前所在」的那道下划线） */
+.auth__fhead::after {
+  content: '';
+  flex: 1;
+  height: 1.5px;
+  background: linear-gradient(90deg, var(--y-text), transparent 100%);
+  opacity: .55;
+}
+/* 标签右侧的实时读数：星名 → 头像预览（`.av` 原样）/ 口令 → 星等（`.mag` 原样） */
+.auth__fx { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; }
+.auth__fx:empty { display: none; }
+
+.auth__in {
+  display: block;
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;                       /* ≥16px 才不触发 iOS 缩放；15px 配合下面的 meta 兜底 */
+  transition: border-color .18s var(--ease), box-shadow .18s var(--ease);
+}
+.auth__in::placeholder { color: var(--ink-faint); }
+.auth__in:focus-visible {
+  outline: 0;
+  border-color: var(--c700);
+  box-shadow: 0 0 0 3px rgba(74, 114, 232, .14);
+}
+.auth__in[aria-invalid="true"] { border-color: var(--hot); }
+.auth__in--name { font-family: var(--font-round); letter-spacing: .04em; }
+
+.auth__hint { margin: 6px 0 0; font-size: 12px; line-height: 1.55; color: var(--ink-soft); }
+.auth__fmsg { margin: 6px 0 0; font-size: 12px; line-height: 1.55; color: var(--hot-link); }
+.auth__fmsg:empty { display: none; }
+
+/* ============ 口令强度：星等 ============ */
+/* 用站点自己的尺：`magnitudeGlow()` 把强度换成 0~1 喂给 `.mag` 的 --glowAmt。
+   方向与天文学一致 —— **星等越小越亮 ⇒ 口令越强越亮**。 */
+.auth__meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  min-height: 20px;
+}
+.auth__meter .mag { margin: 0; }
+.auth__meter-txt { font-size: 12px; color: var(--ink-soft); }
+.auth__meter-scale { margin-left: auto; font-size: 11.5px; color: var(--ink-faint); }
+
+/* ============ 提交 ============ */
+.auth__foot { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
+.auth__go {
+  flex: 1;
+  justify-content: center;
+  height: 44px;
+  font-size: 15px;
+  border: 0;
+  cursor: pointer;
+}
+.auth__go[disabled] { opacity: .6; cursor: default; transform: none; }
+.auth__alt { margin: 12px 0 0; font-size: 13px; color: var(--ink-soft); text-align: center; }
+.auth__alt a { color: var(--link); }
+
+/* ============ 结果态 ============ */
+.auth__done { text-align: center; }
+.auth__done .cst {
+  margin: 0 auto 12px;
+  width: 76px; height: 76px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--c500);
+  background: radial-gradient(circle at 50% 42%,
+              hsl(var(--ah, 218) var(--auth-s) var(--auth-l) / .16), transparent 70%),
+              linear-gradient(180deg, var(--surface), var(--c100));
+}
+.auth__done .star {
+  width: 0; height: 0; position: relative;
+}
+.auth__done .star > i { position: absolute; left: 0; top: 0; border-radius: 50%; }
+.auth__done .star-halo {
+  width: 62px; height: 62px; margin: -31px 0 0 -31px;
+  background: radial-gradient(circle, hsl(var(--ah, 218) var(--auth-s) var(--auth-l) / .6) 0%, transparent 68%);
+}
+.auth__done .star-core {
+  width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px;
+  background: hsl(var(--ah, 218) var(--auth-s) var(--auth-l));
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .92) inset,
+              0 0 20px hsl(var(--ah, 218) 92% 62% / .9);
+}
+.auth__done h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink-deep);
+}
+.auth__done p { margin: 0 auto; max-width: 26em; font-size: 13px; line-height: 1.7; color: var(--ink-soft); }
+.auth__done .meta {
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+.auth__done .auth__foot { margin-top: 16px; }
+.auth__done .btn { flex: 1; justify-content: center; }
+/* 「本页不保存」这类老实交代：中性色，别用警告色，它不是错误 */
+.auth__note {
+  margin: 12px 0 0;
+  padding: 8px 11px;
+  border: 1.5px dashed var(--c400);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  text-align: left;
+}
+.auth__note code { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink); }
+
+/* ============ 断点 ============ */
+@media (max-width: 640px) {
+  .auth { margin-top: 16px; }
+  .auth__panel { padding: 16px 15px 15px; }
+  .auth__in { height: 44px; font-size: 16px; }   /* 窄屏抬到 16px，免得 iOS 聚焦时把页面放大 */
+  .auth__chart { height: 92px; }
+  .auth__star-halo { width: 42px; height: 42px; margin: -21px 0 0 -21px; }
+}
+
+/* ============ 降低动效 ============ */
+@media (prefers-reduced-motion: reduce) {
+  .js .auth__arc { stroke-dasharray: none; stroke-dashoffset: 0; transition: none; }
+  .js .auth__dot { opacity: .9; transition: none; }
+  .auth__star, .auth__chart { transition: none; }
+}

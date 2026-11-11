@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>观测调度台 · 星海社</title>
+<meta name="description" content="星海社管理端：内容审核、举报与申诉、用户权限、公告与版块、操作日志，六个视图同页切换。">
+<script>document.documentElement.classList.add('js')</script>
+<script>(function(){try{var t=localStorage.getItem('hoshikai:theme');if(t!=='dark'&&t!=='light'){t='light';}document.documentElement.dataset.theme=t;}catch(e){}})();</script>
+<script>window.addEventListener('error',function(e){window.__ERR=(window.__ERR||'')+(e.message||'?')+' @'+String(e.filename||'').split('/').pop()+':'+(e.lineno||0)+' | ';});</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8' fill='%234a72e8'/%3E%3Ccircle cx='19' cy='5' r='2.4' fill='%23dfbd65'/%3E%3C/svg%3E">
+<script>/* 开屏只在本次会话第一次进站播；之后首帧前直接跳过 */
+try{if(localStorage.getItem("hoshikai:boot")==="1")document.documentElement.classList.add("boot-skip")}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="./fonts/fonts.css">
+<link rel="stylesheet" id="fontCss" href="./fonts/fonts.css" media="print" onload="this.media='all'">
+<script src="./boot.js" defer></script>
+<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./admin.css">
+<link rel="stylesheet" href="./menu.css">
+</head>
+<body>
+
+<!-- 开屏：字体没到不进场（逻辑见 boot.js，样式见 style.css 的 .boot 段） -->
+<div class="boot" id="boot" role="status" aria-live="polite">
+  <div class="boot__box">
+    <svg class="boot__dial" viewBox="0 0 200 200" aria-hidden="true">
+      <circle class="boot__ring" cx="100" cy="100" r="78"/>
+      <circle class="boot__ring boot__ring--i" cx="100" cy="100" r="58"/>
+      <ellipse class="boot__ec" cx="100" cy="100" rx="86" ry="32" transform="rotate(-23 100 100)"/>
+      <circle class="boot__pl" r="5.5"/>
+    </svg>
+    <p class="boot__t">星海社<span>正在校准星盘</span></p>
+    <div class="boot__bar" aria-hidden="true"></div>
+    <p class="boot__s">载入星图字体…</p>
+  </div>
+</div>
+
+<div class="bg" aria-hidden="true">
+  <span class="bg__l" style="--i:0"></span>
+  <span class="bg__l" style="--i:1"></span>
+  <span class="bg__l" style="--i:2"></span>
+  <span class="bg__l" style="--i:3"></span>
+  <span class="bg__l" style="--i:4"></span>
+  <span class="bg__l" style="--i:5"></span>
+  <span class="bg__l" style="--i:6"></span>
+  <span class="bg__wash"></span>
+</div>
+<canvas id="sky" aria-hidden="true"></canvas>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-orbit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-stars4" viewBox="0 0 24 24"><g fill="currentColor">
+    <path d="M15.4 2.6c.5 3.6 2.1 5.2 5.7 5.7-3.6.5-5.2 2.1-5.7 5.7-.5-3.6-2.1-5.2-5.7-5.7 3.6-.5 5.2-2.1 5.7-5.7Z"/>
+    <path d="M6.1 10.9c.32 2.3 1.35 3.33 3.65 3.65-2.3.32-3.33 1.35-3.65 3.65-.32-2.3-1.35-3.33-3.65-3.65 2.3-.32 3.33-1.35 3.65-3.65Z"/>
+    <circle cx="18.6" cy="14.9" r="1.5"/><circle cx="7.2" cy="20.4" r="1.05"/></g></symbol>
+  <symbol id="i-telescope" viewBox="0 0 76 75"><g fill="currentColor">
+    <path d="M31 46 L15.5 72.5 L21 72.5 L33 48.5 Z"/><path d="M31 46 L46.5 72.5 L41 72.5 L29 48.5 Z"/>
+    <path d="M31 46 L29.4 72.5 L32.6 72.5 L33 48.5 Z"/>
+    <rect x="20.5" y="58" width="21" height="3" rx="1.5" transform="rotate(-4 31 59.5)"/>
+    <rect x="26" y="36" width="10" height="11.5" rx="1.8"/><rect x="24.5" y="31.5" width="13" height="5.4" rx="1.8"/>
+    <g transform="rotate(-31 31 32)"><rect x="10.5" y="27.4" width="45" height="9.4" rx="2"/>
+      <rect x="52.5" y="25.2" width="7.6" height="13.8" rx="1.6"/><rect x="4.6" y="29" width="6.2" height="6.2" rx="1.5"/>
+      <rect x="22" y="17.6" width="21" height="4.2" rx="1.7"/><rect x="23" y="20.6" width="2.8" height="5.6" rx="1.1"/>
+      <rect x="39.4" y="20.6" width="2.8" height="5.6" rx="1.1"/></g></g></symbol>
+  <symbol id="i-telescope-tile" viewBox="0 0 40 40"><g fill="currentColor">
+    <g transform="rotate(-32 20 17)"><rect x="4" y="13.4" width="28" height="7.4" rx="1.6"/>
+      <rect x="30" y="11.8" width="6" height="10.6" rx="1.4"/><rect x="0.6" y="14.6" width="4.4" height="5" rx="1.2"/></g>
+    <rect x="17.2" y="21" width="5.6" height="4.6" rx="1.2"/>
+    <path d="M20 24.5 L12.6 38.5 L16.7 38.5 L21 26.4 Z"/><path d="M20 24.5 L27.4 38.5 L23.3 38.5 L19 26.4 Z"/>
+    <path d="M20 24.5 L19.2 38.5 L20.8 38.5 L21 26.4 Z"/></g></symbol>
+
+  <!-- 管理端六个视图：全部用站里的仪器语汇，不用齿轮/盾牌/喇叭这类通用后台图标 -->
+  <symbol id="a-quadrant" viewBox="0 0 24 24"><path d="M3.6 20.4A16.8 16.8 0 0 1 20.4 3.6"/><path d="M3.6 20.4H20.4"/><path d="m3.6 20.4 11-11"/><circle cx="14.6" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="a-telescope" viewBox="0 0 24 24"><g transform="rotate(-27 12 10)"><rect x="1.8" y="7.4" width="14.6" height="5.2" rx="1.6"/><rect x="16.4" y="6.2" width="3.6" height="7.6" rx="1.2"/></g><path d="M12 12.6v3.2"/><path d="M9 21.2 12 15.8l3 5.4"/></symbol>
+  <symbol id="a-comet" viewBox="0 0 24 24"><circle cx="17" cy="7" r="2.6" fill="currentColor" stroke="none"/><path d="M14.4 9.6 4 20M13.6 5.6 4.2 11.6M18.4 10.4 10 19"/></symbol>
+  <symbol id="a-multistar" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="4.2" transform="rotate(-26 12 12)"/><circle cx="12" cy="12" r="2.3"/><circle cx="19.6" cy="8.8" r="1.6" fill="currentColor" stroke="none"/><circle cx="5.1" cy="15.4" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="a-mast" viewBox="0 0 24 24"><path d="M12 21V10.2"/><path d="M8 21 12 10.2 16 21"/><circle cx="12" cy="6" r="1.7"/><path d="M8.6 3.4a5.4 5.4 0 0 0 0 5.2M15.4 3.4a5.4 5.4 0 0 1 0 5.2"/></symbol>
+  <symbol id="a-curve" viewBox="0 0 24 24"><path d="M3.4 3.4v17.2h17.2"/><path d="m5 16.4 3.2-4.4 3 2.2 3.4-6.4 4.6 3.6"/><circle cx="15" cy="7.8" r="1.4" fill="currentColor" stroke="none"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="wrap topbar__inner">
+    <a class="brand" href="./">
+      <span class="brand__mark"><svg class="i"><use href="#i-orbit"/></svg></span>
+      <span class="brand__text"><strong>星海社</strong><em>HOSHIKAI</em></span>
+    </a>
+    <nav class="nav" id="nav" aria-label="主导航">
+      <a href="./"><i><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-stars4"/></svg></i>首页</a>
+      <a href="./forum/1-1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>星图馆</a>
+      <a href="./forum/2-1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>创作所</a>
+      <a href="./forum/3-1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>观测台</a>
+      <a href="./space/1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>个人空间</a>
+      <a href="./msg/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>消息</a>
+    </nav>
+    <div class="tools">
+      <form class="search" role="search" action="./search/" method="get">
+        <svg class="i"><use href="#i-search"/></svg>
+        <input type="search" name="q" placeholder="搜索作品 / 帖子 / 用户" aria-label="站内搜索">
+      </form>
+      <button class="theme-tg" id="themeTg" type="button" aria-label="切换到夜间模式" aria-pressed="false">
+        <svg class="theme-tg__moon" aria-hidden="true"><use href="#i-moon"/></svg>
+        <svg class="theme-tg__sun" aria-hidden="true"><use href="#i-sun"/></svg>
+      </button>
+      <a class="btn btn--ghost" href="./login/">登录</a>
+      <a class="btn btn--solid" href="./register/">注册</a>
+    </div>
+  </div>
+</header>
+
+<main id="top" class="wrap">
+  <nav class="sp-crumb" aria-label="面包屑"><a href="./">首页</a> › <a href="./sitemap/">站点地图</a> › <span id="adCrumb">管理台总览</span></nav>
+
+  <div class="ad">
+    <aside class="ad-rail" aria-label="管理端视图">
+      <div class="ad-rail__brand">
+        <svg class="ad-rail__mark" viewBox="0 0 24 24" aria-hidden="true"><use href="#a-quadrant"/></svg>
+        <div><strong>星海社</strong><em>OPS CONSOLE</em></div>
+      </div>
+
+      <p class="ad-rail__duty">
+        <span>值班 · <b id="adDuty">—</b></span>
+        <span class="ad-rail__role" id="adRole">—</span>
+      </p>
+
+      <nav class="ad-nav" aria-label="视图切换">
+        <a href="#overview" data-nav="overview"><svg class="i" aria-hidden="true"><use href="#a-quadrant"/></svg>管理台总览<b data-count="todo">—</b></a>
+        <a href="#audit" data-nav="audit"><svg class="i" aria-hidden="true"><use href="#a-telescope"/></svg>内容审核<b data-count="audit">—</b></a>
+        <a href="#reports" data-nav="reports"><svg class="i" aria-hidden="true"><use href="#a-comet"/></svg>举报处理<b data-count="reports">—</b></a>
+        <a href="#users" data-nav="users"><svg class="i" aria-hidden="true"><use href="#a-multistar"/></svg>用户与权限<b data-count="users">—</b></a>
+        <a href="#notices" data-nav="notices"><svg class="i" aria-hidden="true"><use href="#a-mast"/></svg>公告与版块</a>
+        <a href="#logs" data-nav="logs"><svg class="i" aria-hidden="true"><use href="#a-curve"/></svg>操作日志</a>
+      </nav>
+
+      <div class="ad-rail__foot">
+        <span class="ad-rail__t">观测时间</span>
+        <b class="ad-clock" id="adClock">--:--:--</b>
+        <a class="ad-rail__back" href="./">← 返回站点</a>
+      </div>
+    </aside>
+
+    <div class="ad-work">
+      <header class="ad-head">
+        <h1 class="ad-h1" aria-label="观测调度台"><span class="ad-h1__fs" id="adFs" aria-hidden="true"></span></h1>
+        <p class="ad-lead">值班期间的每一次处置都在这里留痕，左边仪器架上的计数实时跟着队列走。<b>全部为前端演示数据，刷新即复位。</b></p>
+      </header>
+
+      <!-- 01 总览 -->
+      <section class="ad-view" id="v-overview" data-view="overview" aria-labelledby="h-overview">
+        <h2 class="ad-vt" id="h-overview">管理台总览<span class="ad-vt__n">01</span></h2>
+
+        <div class="ad-stats" aria-label="今日待办">
+          <a class="ad-stat" href="#audit"><span class="ad-stat__k">待审</span><b id="stAudit">—</b><span class="ad-stat__u">条</span></a>
+          <a class="ad-stat" href="#reports"><span class="ad-stat__k">待举报</span><b id="stReports">—</b><span class="ad-stat__u">条</span></a>
+          <a class="ad-stat" href="#reports" data-tabto="appeals"><span class="ad-stat__k">申诉</span><b id="stAppeals">—</b><span class="ad-stat__u">条</span></a>
+          <a class="ad-stat" href="#users"><span class="ad-stat__k">封禁中</span><b id="stBanned">—</b><span class="ad-stat__u">人</span></a>
+        </div>
+
+        <div class="ad-ephem">
+          <div class="ad-ephem__hd">
+            <span class="ad-ephem__t">今日星历</span>
+            <span class="ad-ephem__l">每格一小时 · 柱高＝处置事件数 · 一等星最亮，先处理</span>
+          </div>
+          <div class="ad-ephem__bars" id="adEphem" aria-hidden="true"></div>
+          <div class="ad-ephem__ax"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+        </div>
+
+        <div class="ad-cols">
+          <div class="ad-col">
+            <h3 class="ad-sub">待办队列<span class="ad-sub__n" id="adQueueN">—</span></h3>
+            <div class="ad-tblwrap"><table class="ad-tbl" aria-label="待办队列（按星等排序）">
+              <thead><tr><th scope="col">队列号</th><th scope="col">事项</th><th scope="col">星等</th><th scope="col">去向</th></tr></thead>
+              <tbody id="adQueueBody"></tbody>
+            </table></div>
+          </div>
+          <div class="ad-col">
+            <h3 class="ad-sub">最近操作<span class="ad-sub__n">8</span></h3>
+            <ol class="ad-feed" id="adFeed"></ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- 02 内容审核 -->
+      <section class="ad-view" id="v-audit" data-view="audit" aria-labelledby="h-audit" hidden>
+        <h2 class="ad-vt" id="h-audit">内容审核<span class="ad-vt__n">02</span></h2>
+        <div class="ad-bar">
+          <label class="ad-find"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+            <input type="search" id="f-audit" data-filter="audit" placeholder="过滤标题 / 提交人 / 版块" aria-label="过滤审核队列"></label>
+          <p class="ad-bar__n" id="nAudit">—</p>
+        </div>
+        <div class="ad-tblwrap"><table class="ad-tbl" aria-label="待审队列">
+          <thead><tr><th scope="col">队列号</th><th scope="col">内容</th><th scope="col">星等</th><th scope="col">时间</th><th scope="col" class="ad-r">处置</th></tr></thead>
+          <tbody id="adAuditBody"></tbody>
+        </table></div>
+      </section>
+
+      <!-- 03 举报处理 -->
+      <section class="ad-view" id="v-reports" data-view="reports" aria-labelledby="h-reports" hidden>
+        <h2 class="ad-vt" id="h-reports">举报处理<span class="ad-vt__n">03</span></h2>
+        <div class="ad-tabs" role="tablist" aria-label="举报与申诉">
+          <button class="ad-tab" role="tab" id="tab-reports" aria-selected="true" aria-controls="pane-reports" data-rtab="reports">举报<b id="nReports">—</b></button>
+          <button class="ad-tab" role="tab" id="tab-appeals" aria-selected="false" aria-controls="pane-appeals" data-rtab="appeals">申诉<b id="nAppeals">—</b></button>
+        </div>
+        <div class="ad-bar">
+          <label class="ad-find"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+            <input type="search" id="f-reports" data-filter="reports" placeholder="过滤对象 / 理由 / 举报人" aria-label="过滤举报队列"></label>
+          <p class="ad-bar__n" id="nReportRows">—</p>
+        </div>
+        <div class="ad-tblwrap" id="pane-reports" role="tabpanel" aria-labelledby="tab-reports">
+          <table class="ad-tbl" aria-label="举报队列">
+            <thead><tr><th scope="col">编号</th><th scope="col">对象 / 理由</th><th scope="col">星等</th><th scope="col">时间</th><th scope="col" class="ad-r">处置</th></tr></thead>
+            <tbody id="adReportBody"></tbody>
+          </table>
+        </div>
+        <div class="ad-tblwrap" id="pane-appeals" role="tabpanel" aria-labelledby="tab-appeals" hidden>
+          <table class="ad-tbl" aria-label="申诉队列">
+            <thead><tr><th scope="col">编号</th><th scope="col">对象 / 申辩</th><th scope="col">星等</th><th scope="col">时间</th><th scope="col" class="ad-r">处置</th></tr></thead>
+            <tbody id="adAppealBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 04 用户与权限 -->
+      <section class="ad-view" id="v-users" data-view="users" aria-labelledby="h-users" hidden>
+        <h2 class="ad-vt" id="h-users">用户与权限<span class="ad-vt__n">04</span></h2>
+        <div class="ad-bar">
+          <label class="ad-find"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+            <input type="search" id="f-users" data-filter="users" placeholder="过滤星名 / UID / 角色" aria-label="过滤用户"></label>
+          <p class="ad-bar__n" id="nUsers">—</p>
+        </div>
+        <div class="ad-tblwrap"><table class="ad-tbl" aria-label="用户列表">
+          <thead><tr><th scope="col">UID</th><th scope="col">星名 / 角色</th><th scope="col">星等</th><th scope="col">帖子</th><th scope="col">状态</th><th scope="col" class="ad-r">处置</th></tr></thead>
+          <tbody id="adUserBody"></tbody>
+        </table></div>
+      </section>
+
+      <!-- 05 公告与版块 -->
+      <section class="ad-view" id="v-notices" data-view="notices" aria-labelledby="h-notices" hidden>
+        <h2 class="ad-vt" id="h-notices">公告与版块<span class="ad-vt__n">05</span></h2>
+
+        <form class="ad-new" id="adNewNotice" autocomplete="off">
+          <div class="ad-new__row">
+            <label class="ad-new__l" for="ntTitle">公告标题</label>
+            <input class="ad-new__in" id="ntTitle" name="title" required maxlength="40" placeholder="一句话说清这条公告要做什么">
+            <label class="ad-new__l" for="ntBoard">版块</label>
+            <select class="ad-new__in ad-new__sel" id="ntBoard" name="board">
+              <option>全站</option><option>星图馆</option><option>创作所</option><option>观测台</option>
+            </select>
+            <button class="ad-btn ad-btn--go" type="submit">发布</button>
+          </div>
+        </form>
+
+        <h3 class="ad-sub">公告<span class="ad-sub__n" id="nNotices">—</span></h3>
+        <div class="ad-tblwrap"><table class="ad-tbl" aria-label="公告列表">
+          <thead><tr><th scope="col">编号</th><th scope="col">标题</th><th scope="col">版块</th><th scope="col">日期</th><th scope="col">状态</th><th scope="col" class="ad-r">操作</th></tr></thead>
+          <tbody id="adNoticeBody"></tbody>
+        </table></div>
+
+        <h3 class="ad-sub">版块<span class="ad-sub__n" id="nBoards">—</span></h3>
+        <div class="ad-tblwrap"><table class="ad-tbl" aria-label="版块负载">
+          <thead><tr><th scope="col">版块</th><th scope="col">子板块</th><th scope="col">帖子</th><th scope="col">今日</th><th scope="col">版主</th><th scope="col" class="ad-r">状态</th></tr></thead>
+          <tbody id="adBoardBody"></tbody>
+        </table></div>
+      </section>
+
+      <!-- 06 操作日志 -->
+      <section class="ad-view" id="v-logs" data-view="logs" aria-labelledby="h-logs" hidden>
+        <h2 class="ad-vt" id="h-logs">操作日志<span class="ad-vt__n">06</span></h2>
+        <div class="ad-bar">
+          <label class="ad-find"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+            <input type="search" id="f-logs" data-filter="logs" placeholder="过滤操作人 / 动作 / 对象" aria-label="过滤操作日志"></label>
+          <p class="ad-bar__n" id="nLogs">—</p>
+        </div>
+        <div class="ad-tblwrap"><table class="ad-tbl" aria-label="操作日志">
+          <thead><tr><th scope="col">时间</th><th scope="col">操作人</th><th scope="col">动作</th><th scope="col">对象</th></tr></thead>
+          <tbody id="adLogBody"></tbody>
+        </table></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <!-- ⚠️ 整块照抄 v3p 首页的 .title：四层背景（CG / 极光 / 星盘 / 流星）+ 内容层 .title__in。
+       星盘和菜单的 DOM 由 footer.js 补；.title 里就地写死深底文字令牌，不跟主题走。 -->
+  <section class="title" aria-label="站点标题画面">
+    <div class="title__bg" aria-hidden="true"></div>
+    <div class="title__aur" aria-hidden="true"></div>
+    <svg class="dial title__dial" aria-hidden="true"></svg>
+    <div class="title__sky" aria-hidden="true"><span class="shoot" style="--x:62%;--y:6%;--a:32deg;--dur:13s;--del:1.5s"></span><span class="shoot" style="--x:78%;--y:18%;--a:28deg;--dur:17s;--del:6.5s"></span><span class="shoot" style="--x:40%;--y:4%;--a:38deg;--dur:19s;--del:11s"></span></div>
+    <div class="wrap title__in">
+      <div class="title__lead">
+        <p class="title__eye">HOSHIKAI<span> · GALGAME OBSERVERS</span> · <span data-logdate></span></p>
+        <p class="title__logo"><span class="title__mk"><span class="lt title__c" style="--i:0">星</span><span class="lt title__c" style="--i:1">海</span><span class="lt title__c" style="--i:2">社</span><svg class="title__orb" viewBox="0 0 200 60" aria-hidden="true"><ellipse cx="100" cy="30" rx="96" ry="22"/><circle class="title__moon" r="4"><animateMotion dur="11s" repeatCount="indefinite" path="M4 30a96 22 0 1 0 192 0a96 22 0 1 0-192 0"/></circle></svg></span><span class="title__en">HOSHIKAI · Night Log</span></p>
+        <p class="title__tag" data-tagline></p>
+        <div class="menuw"><svg class="menu__cst" aria-hidden="true"></svg><ol class="menu">
+        <li><a class="menu__i" href="./sitemap/"><span class="menu__k">SITEMAP</span><span class="menu__t">站点地图</span><span class="menu__d">全站页面索引</span></a></li>
+        <li><a class="menu__i" href="./rules/"><span class="menu__k">RULES</span><span class="menu__t">版规总则</span><span class="menu__d">观测前先读这个</span></a></li>
+        <li><a class="menu__i" href="./links/"><span class="menu__k">LINKS</span><span class="menu__t">友情链接</span><span class="menu__d">邻接的天文台</span></a></li>
+        <li><a class="menu__i" href="./contact/"><span class="menu__k">CONTACT</span><span class="menu__t">联系我们</span><span class="menu__d">给理事会发信</span></a></li>
+        <li><span class="menu__i is-off" aria-disabled="true"><span class="menu__k">HISTORY</span><span class="menu__t">历史</span><span class="menu__d">观测记录 · 还没做</span></span></li>
+        </ol></div>
+      </div>
+      <dl class="title__sys" aria-label="站点读数">
+        <div><dt>观测者</dt><dd data-stat="members">—</dd></div>
+        <div><dt>星体</dt><dd data-stat="threads">—</dd></div>
+        <div><dt>今夜新帖</dt><dd data-stat="todayPosts">—</dd></div>
+        <div><dt>在台</dt><dd data-stat="online">—</dd></div>
+      </dl>
+      <div class="title__ann">
+        <span class="title__plate">理事会<small data-ann-tag></small></span>
+        <p class="title__annT"><a href="./board.html?b=1-1" data-ann-title></a></p>
+        <p class="title__annB"><span class="sr" data-ann-body></span><span class="tw" aria-hidden="true"></span><span class="caret" aria-hidden="true"></span></p>
+        <svg class="title__next" viewBox="0 0 10 8" aria-hidden="true"><path d="M0 0l5 8 5-8z" fill="currentColor"/></svg>
+      </div>
+    </div>
+  </section>
+  <div class="wrap footer__note">本页为排版设计稿演示 · 处置只作用于本页内存，刷新即复位</div>
+</footer>
+
+<div class="ad-toast" id="adToast" role="status" aria-live="polite"></div>
+
+<script src="./shared/data.js"></script>
+<script src="./theme.js"></script>
+<script src="./session.js"></script>
+<script src="./admin.data.js"></script>
+<script src="./admin.js"></script>
+
+<!-- 反向验证注入点：带 ?css= / ?js= 才执行 -->
+<script>(function () {
+  var q = new URLSearchParams(location.search);
+  var dec = function (s) { return decodeURIComponent(escape(atob(s))); };
+  var css = q.get('css'), js = q.get('js');
+  if (css) { try { var st = document.createElement('style'); st.textContent = dec(css); document.head.appendChild(st); } catch (e) { console.error('inject css 失败', e); } }
+  if (js) { try { (0, eval)(dec(js)); } catch (e) { console.error('inject js 失败', e); } }
+})();</script>
+<script src="./menu.js"></script>
+<script src="./starbtn.js"></script>
+<script src="./footer.js"></script>
+</body>
+</html>

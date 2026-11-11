@@ -1,0 +1,452 @@
+/* 星海社 · 个人空间（./space/<uid>/）
+   ------------------------------------------------------------------
+   ⚠️ 材料纪律：
+     ① **不加新颜色字面量** —— 卡面/文字/边框一律走站内令牌（project.md §3）。
+        唯一例外是「星图面板」：它按设计在亮暗两主题下**都是深色**（深空视窗材料），
+        自带一组不翻的 --sky-* 令牌，值取自站内 --hud-void / --hud-ice / --y400 那一档。
+     ② 卡片一律复用站内语汇：封面走 shared/data.js 的 coverGradient() +
+        style.css 的 .rec__cover::after（三圈同心轨道环 + 金色十字星芒 + 星点）。
+     ③ 分页组件的样式（.pg__*）住在 forum.css 里，本页引它、不重写。
+   ------------------------------------------------------------------ */
+
+/* ══════════════════ 0. 面包屑 ══════════════════ */
+.sp-crumb { font-size: 12px; color: var(--ink-faint); padding: 18px 2px 12px; }
+.sp-crumb a { color: var(--ink-soft); text-decoration: none; }
+.sp-crumb a:hover { color: var(--c800); text-decoration: underline; }
+.sp-crumb b { color: var(--ink-deep); font-weight: 600; }
+
+/* ══════════════════ 1. 观测证（页头） ══════════════════ */
+.sp-id {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'av who mag' 'stats stats stats';
+  gap: 18px 22px; align-items: center;
+  padding: 22px 24px;
+  border: 1.5px solid var(--c400); border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--surface) 0%, color-mix(in srgb, var(--c100) 72%, var(--surface)) 100%);
+  box-shadow: var(--shadow-sm);
+}
+.sp-id__av {
+  grid-area: av; display: grid; place-items: center;
+  width: 76px; height: 76px; border-radius: 24px;
+  font-family: var(--font-display); font-size: 36px; font-weight: 700; line-height: 1;
+  background: hsl(var(--ah, 220) 62% var(--av-bg-l));
+  color: hsl(var(--ah, 220) 55% var(--av-fg-l));
+  box-shadow: 0 0 0 2px hsl(var(--ah, 220) 68% 62% / .45);
+}
+.sp-id__who { grid-area: who; min-width: 0; }
+.sp-id__nm { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 4px;
+  font-family: var(--font-display); font-size: 30px; font-weight: 700; color: var(--ink-deep); letter-spacing: .02em; }
+.sp-id__kana { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--ink-faint); letter-spacing: .08em; }
+.sp-id__sig { margin: 0 0 8px; font-size: 14px; color: var(--ink-soft); }
+.sp-id__meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; font-size: 12px; color: var(--ink-faint); }
+.sp-id__meta b { color: var(--ink-deep); font-weight: 600; }
+.sp-id__mag { grid-area: mag; text-align: center; color: var(--ink-faint); }
+
+/* ============ 星表盘（抄自 v3p 帖子页的 .gauge）============
+   240° 刻度盘 + 指针 + 会呼吸的星芒：--a 是指针角度、--g 是亮度 0~1。
+   ⚠️ 金色一律用 --hud-gold-s（HUD 金·强档，与这张卡原有的金线同档，深浅两套主题都跟着走）；
+      指针用 --hot-link 与金色拉开；星芯用 --y400 —— 暗色主题会把 --y100/200/300 换成深蓝底料。 */
+.sp-id__mag .gauge { margin: 0; width: 200px; text-align: center; }
+.gauge svg { width: 200px; height: 200px; overflow: visible; }
+.gauge__trk { fill: none; stroke: var(--hud-gold-w); stroke-width: 2; }
+.gauge line { stroke: var(--hud-gold-s); stroke-opacity: .7; }
+.gauge text { font: 500 12px var(--font-mono); fill: var(--ink-soft); text-anchor: middle; }
+.gauge__rays {
+  transform-box: fill-box; transform-origin: center;
+  scale: calc(.45 + var(--g) * .65); fill: var(--hud-gold-s);
+  filter: drop-shadow(0 0 calc(4px + var(--g) * 14px) var(--hud-gold-s));
+  animation: raySpin 30s linear infinite;
+}
+@keyframes raySpin { to { rotate: 360deg; } }
+.gauge__core { fill: var(--y400); filter: drop-shadow(0 0 8px var(--hud-gold-s)); }
+/* view-box 的参考框原点在 viewBox 的 (0,0)，不是盒子中心 —— 指针是绕盘心转的 */
+.gauge__nd { transform-box: view-box; transform-origin: 0 0; rotate: var(--a); fill: var(--hot-link); }
+.gauge.is-in .gauge__nd { animation: needle 1.6s cubic-bezier(.3, 1.4, .5, 1) .3s both; }
+@keyframes needle { from { rotate: -120deg; } }
+.gauge figcaption { margin-top: -26px; }
+.gauge figcaption b {
+  font-family: var(--font-display); font-size: 34px; font-weight: 700; line-height: 1; color: var(--hud-gold-s);
+}
+.gauge figcaption small { display: block; margin-top: 4px; font-size: 12px; color: var(--ink-faint); }
+.sp-id__rank { margin: 2px 0 0; font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+.sp-id__rank b { color: var(--ink-deep); font-weight: 600; }
+.sp-id__stats { grid-area: stats; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px; margin: 4px 0 0; padding-top: 16px; border-top: 1px solid var(--line-soft); }
+.sp-id__stats > div { padding: 0 4px; border-left: 1px solid var(--line-soft); }
+.sp-id__stats > div:first-child { border-left: 0; padding-left: 0; }
+.sp-id__stats dt { font-size: 12px; color: var(--ink-faint); margin-bottom: 2px; }
+.sp-id__stats dd { margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--ink-deep); line-height: 1.1; }
+
+/* ══════════════════ 2. 分档网格 ══════════════════
+   档 1（hero）  主图 + 侧栏      —— 左右由 stretch 拉平，侧栏末块 flex 吸收余高
+   档 2（dir）   三栏目录          —— 等宽
+   档 3（quiet） 推荐 + 本命       —— 两栏
+   ⚠️ 上一版只有「两栏并排」一种，矮的那块底下留一个洞（实测差 283px / 248px）。 */
+.sp-cols { display: grid; gap: 18px; margin-top: 18px; align-items: stretch; }
+/* 两栏**等宽**（用户 2026-10-14：「左右始终对称你也没做」—— 指的就是这个，不是高度对不齐）。
+   代价：图从 721 缩到 683，面板矮 60px 左右。 */
+.sp-cols--hero { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sp-cols--dir { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* 通栏带。横条类内容（3 张横着的精选卡）天然填不满半栏，并排就会在底下留一个洞 ——
+   实测过 173 vs 389，差 216px。做成一条带，它就不需要跟谁等高。 */
+.sp-band { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); margin-top: 18px; }
+
+/* 侧栏：名册在上、在线时间在下；让在线时间吸收这一栏剩下的高度，
+   这样右栏永远和左边那张图一样高 —— 不是靠「差不多」，是靠 flex 兜住。 */
+.sp-side { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.sp-side > .sp-block:last-child { flex: 1 1 auto; }
+
+/* ══════════════════ 3. 本周星系（主图） ══════════════════ */
+/* ⚠️ align-self: start 是**必须的**，它断开一个循环：
+   图是 grid item，默认被 stretch 拉到行高；而行高又由右栏内容决定。
+   于是 syncSide() 量「图有多高」时量到的是**右栏自己撑出来的高度**，
+   上限等于内容高度 ⇒ 兜不住，40 位伴星时整行从 543 涨到 1457。
+   改成本身按内容定高（start），右栏的上限就有了独立的参照。 */
+.sp-plot { margin: 0; display: flex; flex-direction: column; min-width: 0; align-self: start; }
+/* 通栏的图题：让左右两栏从同一条线起（留在左栏里时右栏那张卡会高出一行标题） */
+.sp-herocap { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 18px 2px 10px; }
+.sp-herocap h2 { margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--ink-deep); letter-spacing: .04em; }
+.sp-herocap p { margin: 0; font-size: 12px; color: var(--ink-faint); font-family: var(--font-mono); letter-spacing: .04em; }
+.sp-herocap + .sp-cols { margin-top: 0; }
+.sp-plot__box {
+  --sky-bg: #080f22; --sky-edge: #16264d; --sky-ice: #cfe0ff; --sky-gold: #ffe7a3; --sky-warm: #fff1c9;
+  position: relative; border: 1.5px solid var(--sky-edge); border-radius: var(--r-lg);
+  background: radial-gradient(130% 120% at 50% -10%, #0e1c3d 0%, var(--sky-bg) 62%, #050a16 100%);
+  box-shadow: 0 20px 48px -20px rgba(8, 15, 34, .58), inset 0 0 70px rgba(4, 8, 18, .9);
+  overflow: hidden;
+}
+.sp-sv { display: block; width: 100%; height: auto; }
+.sp-tx { font-family: var(--font-mono); font-size: 11px; letter-spacing: .05em; fill: var(--sky-ice); fill-opacity: .62; }
+.sp-mt { font-family: var(--font-body); font-size: 11px; font-weight: 500; fill: var(--sky-ice); fill-opacity: .82; }
+
+.sp-me__pulse { animation: spPulse 3.6s var(--ease) infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes spPulse { 0%, 100% { opacity: .14; transform: scale(1); } 50% { opacity: .3; transform: scale(1.34); } }
+.sp-me__arc { filter: drop-shadow(0 0 5px rgba(255, 231, 163, .55)); }
+
+.sp-orb__hit { cursor: pointer; transition: filter .18s var(--ease); }
+.sp-orb__hit:focus-visible { outline: 2px solid var(--sky-gold); outline-offset: 3px; }
+.sp-orb__hit:active { filter: brightness(1.3) drop-shadow(0 0 12px var(--sky-warm)); transform: scale(1.12); }
+/* 名字常显但压到 .42 —— 一眼扫得着，不跟星抢；hover / 聚焦 / 名册指到才提到满 */
+.sp-orb .sp-mt { transition: fill-opacity .18s var(--ease); fill-opacity: .42; }
+.sp-orb.is-hot .sp-mt, .sp-orb:hover .sp-mt, .sp-orb:focus-within .sp-mt { fill-opacity: 1; }
+.sp-orb.is-hot .sp-orb__hit, .sp-orb:hover .sp-orb__hit, .sp-orb:focus-within .sp-orb__hit { filter: drop-shadow(0 0 8px var(--sky-warm)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-orb__hit { transition: none; }
+  .sp-orb__hit:active { transform: none; }
+}
+
+/* 流星：站内 shower 语汇（渐隐尾 + 亮头）。一格只占 9% 的关键帧，其余时间都在画面外。
+   行程用 CSS 变量从 JS 传进来 —— viewBox 是算出来的，写死像素会飘到画外。 */
+.sp-meteor { animation: spMeteor 15s linear infinite; }
+.sp-meteor--b { animation: spMeteorB 19s linear infinite; animation-delay: 7s; }
+@keyframes spMeteor {
+  0%, 1% { transform: translate(0, 0); opacity: 0; }
+  2% { opacity: 1; }
+  10% { transform: translate(var(--ma-x, 400px), var(--ma-y, 200px)); opacity: 0; }
+  100% { transform: translate(var(--ma-x, 400px), var(--ma-y, 200px)); opacity: 0; }
+}
+@keyframes spMeteorB {
+  0%, 1% { transform: translate(0, 0); opacity: 0; }
+  2% { opacity: 1; }
+  10% { transform: translate(var(--mb-x, -400px), var(--mb-y, 200px)); opacity: 0; }
+  100% { transform: translate(var(--mb-x, -400px), var(--mb-y, 200px)); opacity: 0; }
+}
+.sp-plot__legend { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 12px 0 0; padding: 0; list-style: none; }
+.sp-plot__legend li { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-soft); }
+.sp-k { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.sp-k--me { background: #ffe7a3; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c400) 60%, transparent); }
+.sp-k--mate { background: #cfe0ff; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c400) 60%, transparent); }
+.sp-k--lk { width: 16px; height: 0; border-top: 1px dashed #8fb4ff; }
+
+/* ══════════════════ 4. 通用块 + 容器表头 ══════════════════ */
+.sp-block {
+  display: flex; flex-direction: column; min-width: 0;
+  padding: 18px 20px;
+  border: 1.5px solid var(--line-soft); border-radius: var(--r-lg);
+  background: var(--surface); box-shadow: var(--shadow-sm);
+}
+.sp-block__h {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 0 0 14px; font-family: var(--font-display); font-size: 19px; font-weight: 700;
+  color: var(--ink-deep); letter-spacing: .04em;
+}
+/* 标题自己吃掉多余宽度、但宁可换行也不省略 —— 省了就看不出是哪一栏了 */
+.sp-block__h > .sp-more, .sp-block__h > .sp-block__n { margin-left: auto; flex: none; }
+/* ⚠️ 四栏目录里每栏只有 ~330px，「galgame 履历」这个长度会把「全部 N →」挤到第二行，
+   于是四栏的表头不再齐平（第一版就是这样）。收一档字号与内边距，让出口留在同一行。 */
+.sp-cols--dir .sp-block__h { font-size: 17px; gap: 6px; }
+.sp-cols--dir .sp-block__h .i { width: 16px; height: 16px; }
+.sp-cols--dir .sp-more { font-size: 11px; padding: 2px 8px; }
+.sp-block__h .i { width: 18px; height: 18px; color: var(--y-text); }
+.sp-block__n { font-family: var(--font-body); font-size: 12px; font-weight: 400; color: var(--ink-faint); letter-spacing: 0; white-space: nowrap; }
+/* 「全部 N →」是**容器的出口** —— 条数超过封顶才出现，指向这一组的子页面 */
+.sp-more {
+  flex: none; font-family: var(--font-body); font-size: 12px; font-weight: 500; white-space: nowrap;
+  color: var(--c800); text-decoration: none; padding: 3px 9px; border-radius: var(--r-pill);
+  border: 1.5px solid color-mix(in srgb, var(--c500) 70%, transparent);
+  transition: background-color .16s var(--ease), border-color .16s var(--ease);
+}
+.sp-more:hover { background: color-mix(in srgb, var(--c100) 80%, transparent); border-color: var(--c600); }
+.sp-block__lead { margin: -6px 0 14px; font-size: 13px; color: var(--ink-soft); line-height: 1.7; }
+/* ⚠️ margin-top: auto：把「还有 N 条在全部里」那行钉到卡底。
+   同一行几块内容量天然不同（履历比作品矮一截），钉住之后差值落在内容与页脚之间，
+   读起来是留白，不是「下面被截掉了」。 */
+.sp-tally { margin: 12px 0 0; margin-top: auto; padding-top: 10px; border-top: 1px dashed var(--line-soft); font-size: 12px; color: var(--ink-faint); }
+.sp-block--hm .sp-hm__note { margin-top: auto; }
+.sp-empty { margin: 0; padding: 22px 0; text-align: center; font-size: 13px; color: var(--ink-faint); }
+
+/* 右栏：**一块**，内部两段（伴星名册 + 在线时间）。
+   高度由 space.js 的 syncSide() 钉死成左边那张图的高度 —— 名册再长也只能在这一高度里滚，
+   不会把整行撑高、在图底下留出一个洞。 */
+.sp-side { display: flex; min-width: 0; }
+.sp-side > .sp-block--side { flex: 1 1 auto; min-height: 0; }
+.sp-block--side { display: flex; flex-direction: column; min-height: 0; }
+.sp-sec { min-width: 0; }
+/* 名册段吸收余高：人少 → 底下留空（用户认可）；人多 → 这一段自己纵向滚，其余两段不动。
+   行高压到 30 上下 —— 图变矮之后右栏也矮了，不压的话 9 个人就要出滚动条，
+   而用户明确说「大部分时间不会有滚动条」。 */
+.sp-sec--roster { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.sp-roster {
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; padding-right: 4px;
+}
+.sp-roster:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; border-radius: var(--r-sm); }
+.sp-sec--hr { flex: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-soft); }
+
+/* 卡片网格：目录里是 2 列（预览），「全部」页里是 4 列 */
+.sp-grid { display: grid; gap: 14px; }
+.sp-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sp-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sp-block--full .sp-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+/* ══════════════════ 5. 卡片（作品 / 帖子共用一种形态） ══════════════════ */
+.sp-post {
+  display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+  border: 1.5px solid var(--c400); border-radius: var(--r); background: var(--surface);
+  box-shadow: var(--shadow-sm); text-decoration: none; color: inherit;
+  transition: transform .2s var(--ease), box-shadow .22s var(--ease);
+}
+.sp-post:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.sp-post__cov { position: relative; display: block; aspect-ratio: 16 / 9; }
+.sp-post--work .sp-post__cov { aspect-ratio: 4 / 3; }
+.sp-post__tx {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  margin: 10px 11px 0; font-size: 14px; font-weight: 500; line-height: 1.5; color: var(--ink);
+}
+.sp-post:hover .sp-post__tx { color: var(--c800); }
+/* 元信息允许折到两行 —— 窄栏（145px）下省略号会把「· 43 回复」整段吃掉，那是信息不是装饰 */
+.sp-post__sub {
+  display: block; margin: auto 11px 11px; padding-top: 8px;
+  font-size: 12px; line-height: 1.45; color: var(--ink-faint);
+  overflow-wrap: anywhere;
+}
+.sp-post__sub b {
+  display: inline-block; margin-right: 6px; padding: 1px 6px; border-radius: var(--r-sm); font-weight: 400;
+  color: hsl(var(--h) var(--hue-fg-s) var(--hue-fg-l));
+  background: hsl(var(--h) var(--hue-bg-s) var(--hue-bg-l));
+  border: 1px solid hsl(var(--h) var(--hue-bd-s) var(--hue-bd-l));
+}
+.sp-post__b {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+  color: var(--y-ink); background: linear-gradient(150deg, var(--y300), var(--y500));
+}
+.sp-post__b .i { width: 10px; height: 10px; }
+.sp-post__b--drop { color: #fff; background: rgba(15, 36, 110, .82); }
+
+/* ══════════════════ 6. 履历 ══════════════════ */
+.sp-gl { list-style: none; margin: 0; padding: 0; }
+.sp-gl__r { border-top: 1px solid var(--line-soft); }
+.sp-gl__r:first-child { border-top: 0; }
+.sp-gl__a { display: grid; grid-template-columns: 46px 42px minmax(0, 1fr) auto;
+  align-items: center; gap: 9px; padding: 9px 6px; margin: 0 -6px; border-radius: var(--r-sm);
+  text-decoration: none; color: inherit; transition: background-color .16s var(--ease); }
+.sp-gl__a:hover { background: color-mix(in srgb, var(--c100) 80%, var(--surface)); }
+.sp-gl__d { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); }
+.sp-gl__s { font-size: 11px; text-align: center; padding: 2px 0; border-radius: var(--r-sm); border: 1px solid currentColor; }
+.sp-gl__s--done { color: var(--link); }
+.sp-gl__s--run { color: var(--y-text); }
+.sp-gl__s--drop { color: var(--ink-faint); }
+.sp-gl__t { font-size: 14px; font-weight: 500; color: var(--ink); display: flex; align-items: center; gap: 6px; min-width: 0; }
+.sp-gl__a:hover .sp-gl__t { color: var(--c800); }
+.sp-gl__fav { width: 13px; height: 13px; flex: none; color: var(--y-text); }
+.sp-gl__sc { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--ink-deep); min-width: 30px; text-align: right; }
+.sp-gl__sc--run { display: flex; align-items: center; gap: 6px; min-width: 76px; }
+.sp-gl__sc--run i { flex: 1; height: 4px; border-radius: 2px; background: var(--line-soft); position: relative; }
+.sp-gl__sc--run i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--p); border-radius: 2px; background: var(--y-text); }
+.sp-gl__sc--run b { font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+.sp-gl__line { margin: -3px 0 10px 97px; padding-left: 10px;
+  border-left: 2px solid color-mix(in srgb, var(--c400) 70%, transparent);
+  font-size: 12px; color: var(--ink-soft); line-height: 1.6; }
+
+/* ══════════════════ 7. 推荐作品合集（通栏带） ══════════════════
+   ⚠️ 名次角标与「第 1 名」那圈金边**整组删掉**（用户 2026-10-14：「不要分第一名第二名的」）。
+      评分角标留着 —— 那是我给的分，不是排名。 */
+.sp-pick { position: relative; aspect-ratio: 16 / 9; overflow: hidden;
+  border: 1.5px solid var(--c400); border-radius: var(--r); box-shadow: var(--shadow-sm);
+  text-decoration: none; transition: transform .2s var(--ease), box-shadow .22s var(--ease); }
+.sp-pick:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.sp-pick__veil { opacity: 1; background: linear-gradient(to top, rgba(15, 36, 110, .95), rgba(15, 36, 110, .1) 74%, transparent); }
+.sp-pick__sc { position: absolute; top: 10px; right: 10px; z-index: 2; display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: var(--r-pill); font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+  color: var(--y-ink); background: linear-gradient(150deg, var(--y300), var(--y500)); }
+.sp-pick__sc .i { width: 10px; height: 10px; }
+
+/* ══════════════════ 8. 本命 ══════════════════ */
+.sp-hm__top { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line-soft); }
+.sp-hm__av { display: grid; place-items: center; flex: none; width: 48px; height: 48px; border-radius: 16px;
+  font-family: var(--font-display); font-size: 24px; font-weight: 700;
+  background: hsl(var(--ah, 220) 62% var(--av-bg-l)); color: hsl(var(--ah, 220) 55% var(--av-fg-l)); }
+.sp-hm__nm { display: block; font-family: var(--font-display); font-size: 18px; color: var(--ink-deep); }
+.sp-hm__from { display: block; font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+.sp-hm__mk { margin-left: auto; text-align: right; font-size: 13px; color: var(--ink-soft); }
+.sp-hm__mk em { display: block; font-style: normal; font-size: 12px; color: var(--ink-faint); margin-top: 2px; }
+.sp-hm__lines { list-style: none; counter-reset: hm; margin: 0; padding: 0; }
+.sp-hm__lines li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 0 10px;
+  padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.sp-hm__lines li:last-child { border-bottom: 0; padding-bottom: 0; }
+.sp-hm__lines li::before { counter-increment: hm; content: counter(hm);
+  font-family: var(--font-mono); font-size: 11px; color: var(--y-text);
+  border: 1px solid currentColor; border-radius: 50%;
+  width: 18px; height: 18px; display: grid; place-items: center; margin-top: 3px; }
+.sp-hm__lines blockquote { margin: 0; font-family: var(--font-display); font-size: 15px; line-height: 1.65; color: var(--ink-deep); }
+.sp-hm__lines cite { grid-column: 2; font-style: normal; font-size: 12px; color: var(--ink-faint); margin-top: 4px; }
+.sp-hm__note { margin: 12px 0 0; font-size: 12px; color: var(--ink-faint); }
+
+/* ══════════════════ 9. 名册 ══════════════════ */
+.sp-roster { list-style: none; margin: 0; padding: 0; }
+.sp-roster__r { display: grid; grid-template-columns: 16px 22px minmax(0, 1fr) auto auto auto auto;
+  align-items: center; gap: 7px; padding: 2px 8px; margin: 0 -8px; border-radius: var(--r-sm);
+  transition: background-color .16s var(--ease); }
+.sp-roster__r:hover, .sp-roster__r:focus-visible { background: color-mix(in srgb, var(--c100) 85%, var(--surface)); outline: none; }
+.sp-roster__r:focus-visible { box-shadow: inset 0 0 0 2px var(--c700); }
+.sp-roster__i { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); text-align: right; }
+.sp-roster__av { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  font-size: 11px; font-weight: 700;
+  background: hsl(var(--ah, 220) 62% var(--av-bg-l)); color: hsl(var(--ah, 220) 55% var(--av-fg-l)); }
+.sp-roster__nm { font-size: 13px; color: var(--ink); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-roster__nm:hover { color: var(--c800); }
+.sp-roster__bd { font-size: 11px; padding: 1px 7px; border-radius: var(--r-sm);
+  color: hsl(var(--h) var(--hue-fg-s) var(--hue-fg-l));
+  background: hsl(var(--h) var(--hue-bg-s) var(--hue-bg-l));
+  border: 1px solid hsl(var(--h) var(--hue-bd-s) var(--hue-bd-l)); }
+.sp-roster__d, .sp-roster__m, .sp-roster__ring { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
+.sp-roster__m { color: var(--ink-soft); font-weight: 600; }
+
+/* ══════════════════ 10. 在线时间（24 小时热力格） ══════════════════ */
+.sp-hr { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; list-style: none; margin: 0; padding: 0; }
+.sp-hr__c { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.sp-hr__b { display: block; height: 28px; border-radius: 3px; border: 1px solid var(--line-soft); }
+.sp-hr__c[data-v="0"] .sp-hr__b { background: color-mix(in srgb, var(--c700) 6%, var(--surface)); }
+.sp-hr__c[data-v="1"] .sp-hr__b { background: color-mix(in srgb, var(--c700) 22%, var(--surface)); }
+.sp-hr__c[data-v="2"] .sp-hr__b { background: color-mix(in srgb, var(--c700) 44%, var(--surface)); }
+.sp-hr__c[data-v="3"] .sp-hr__b { background: color-mix(in srgb, var(--c700) 68%, var(--surface)); }
+.sp-hr__c[data-v="4"] .sp-hr__b { background: var(--c700); border-color: var(--c800); }
+.sp-hr__h { font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--ink-faint); text-align: center; }
+.sp-hr__t { position: absolute; left: 50%; bottom: -30px; transform: translateX(-50%);
+  padding: 3px 7px; border-radius: var(--r-sm); white-space: nowrap;
+  font-size: 11px; color: #fff; background: rgba(15, 36, 110, .94);
+  opacity: 0; pointer-events: none; transition: opacity .16s var(--ease); z-index: 3; }
+.sp-hr__c:hover .sp-hr__t, .sp-hr__c:focus-within .sp-hr__t { opacity: 1; }
+.sp-hr__note { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin: 10px 0 0; padding-top: 6px;
+  border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--ink-faint); }
+.sp-hr__k { font-size: 11px; }
+.sp-hr__sw { width: 13px; height: 13px; border-radius: 3px; border: 1px solid var(--line-soft); }
+.sp-hr__sw[data-v="0"] { background: color-mix(in srgb, var(--c700) 6%, var(--surface)); }
+.sp-hr__sw[data-v="1"] { background: color-mix(in srgb, var(--c700) 22%, var(--surface)); }
+.sp-hr__sw[data-v="2"] { background: color-mix(in srgb, var(--c700) 44%, var(--surface)); }
+.sp-hr__sw[data-v="3"] { background: color-mix(in srgb, var(--c700) 68%, var(--surface)); }
+.sp-hr__sw[data-v="4"] { background: var(--c700); border-color: var(--c800); }
+.sp-hr__tot { margin-left: auto; }
+.sp-hr__tot b { color: var(--ink-deep); font-weight: 600; }
+
+/* ══════════════════ 11. 子页面（某一组的「全部」） ══════════════════ */
+.sp-sechead { margin-top: 4px; padding: 0 2px 16px; }
+.sp-back { display: inline-block; margin-bottom: 10px; font-size: 12px; color: var(--ink-soft); text-decoration: none; }
+.sp-back:hover { color: var(--c800); text-decoration: underline; }
+.sp-sechead__t { display: flex; align-items: center; gap: 9px; margin: 0 0 6px;
+  font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--ink-deep); letter-spacing: .04em; }
+.sp-sechead__t .i { width: 22px; height: 22px; color: var(--y-text); }
+.sp-sechead__n { margin: 0; font-size: 12px; color: var(--ink-faint); }
+.sp-sechead__n b { color: var(--ink-deep); font-weight: 600; }
+.sp-block--full { padding: 20px 22px; margin-bottom: 20px; }
+/* 分页那一排用的是站里 forum.css 的 .pg__* ，这里只压一下上边距与对齐 */
+.sp-block--full + .pg__row { margin-top: 4px; }
+.sp-weeknote { margin: 24px 0 8px; text-align: center; font-size: 12px; color: var(--ink-faint); }
+.sp-weeknote b { color: var(--ink-deep); font-weight: 600; }
+
+/* ══════════════════ 12. 断点 ══════════════════ */
+/* ⚠️ 窄屏下星图**不缩**、改成横向可拖（760 宽的画布压进 300px，刻度会掉到 4px）。
+   悬停小注同时改成「视觉隐藏但留在无障碍树里」—— 它原先会把页面撑出 2px 横向溢出。 */
+@media (max-width: 700px) {
+  .sp-plot__box { overflow-x: auto; overscroll-behavior-x: contain; }
+  .sp-sv--gal { min-width: 640px; }
+  .sp-hr__t { left: 50%; width: 1px; height: 1px; padding: 0; border: 0;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap; bottom: auto; }
+}
+@media (max-width: 1180px) {
+  .sp-cols--dir { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sp-block--full .sp-grid--4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* ⚠️ 折成一栏的断点是 **1280**，不是常见的 1080。
+   原因：右栏「名册 + 在线时间」固定需要约 466px；两栏布局下左栏能给多少 = 列宽 ÷ 图的长宽比，
+   而**列越窄图越矮** —— 实测 1241 那一档左栏只有 439，装不下 466，名册就滚。
+   与其把名册行压到 23px（22px 的头像只剩 0.5px 内边距，不可读），
+   不如那一段就折成一栏：叠放时右栏按内容自然高，两边都不挤。
+   实测 1281 起左栏给 490 ≥ 466，有 24px 余量。 */
+@media (max-width: 1280px) {
+  .sp-cols--hero { grid-template-columns: minmax(0, 1fr); }
+  /* 叠放时右栏不跟图等高（没有「左右」了），只给名册一个上限防它撑长页面 */
+  .sp-roster { max-height: 420px; }
+}
+@media (max-width: 1080px) {
+  .sp-gl__line { margin-left: 0; }
+}
+@media (max-width: 880px) {
+  .sp-grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sp-block--full .sp-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .sp-id { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: 'av who' 'mag mag' 'stats stats'; }
+  .sp-id__nm { font-size: 24px; }
+  .sp-id__av { width: 58px; height: 58px; border-radius: 18px; font-size: 28px; }
+  .sp-id__mag { display: flex; align-items: center; gap: 16px; text-align: left; }
+  .sp-id__mag .gauge { display: flex; align-items: center; gap: 10px; width: auto; flex: none; text-align: left; }
+  .gauge svg { width: 110px; height: 110px; }
+  .gauge figcaption { margin: 0; }
+  .gauge figcaption b { font-size: 24px; }
+  .sp-id__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 2px; }
+  .sp-id__stats > div:nth-child(3) { border-left: 0; padding-left: 0; }
+  .sp-cols--dir { grid-template-columns: minmax(0, 1fr); }
+  /* ⚠️ 这里藏掉的是 ring 一项，剩下 6 个格子 —— 必须写 6 列。
+     第一版写成 5 列，多出来的那格换行，每行变成两行高（28 → 51），9 个人就溢出。 */
+  .sp-roster__r { grid-template-columns: 16px 24px minmax(0, 1fr) auto auto auto; }
+  .sp-roster__ring { display: none; }
+  .sp-hr { gap: 2px; }
+  .sp-hr__b { height: 34px; }
+  .sp-hr__h { font-size: 9px; }
+  .sp-hr__note { margin-top: 22px; }
+}
+@media (max-width: 520px) {
+  .sp-roster__d { display: none; }
+  .sp-grid--3 { grid-template-columns: minmax(0, 1fr); }
+  .sp-grid--4, .sp-block--full .sp-grid--4 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ══════════════════ 13. 减少动效 ══════════════════ */
+/* ⚠️ SMIL（公转）不吃 CSS 媒体查询 —— 那部分由 space.js 在渲染时就不吐 animateTransform，
+   静止帧靠静态 transform 撑住。这里只管 CSS 动效。 */
+@media (prefers-reduced-motion: reduce) {
+  .sp-me__pulse, .sp-meteor { animation: none !important; }
+  .sp-meteor { opacity: 0; }
+  .sp-orb .sp-mt { fill-opacity: 1; }
+  .sp-post, .sp-pick, .sp-roster__r, .sp-more { transition: none; }
+  /* 星表盘：星芒的 30s 无限旋转碰到 style.css 的 `animation-duration:.01ms` 会变成频闪，
+     直接停掉；指针也停 —— `animation:none` 时 rotate 取 var(--a)，正好是读数位置。 */
+  .gauge__rays { animation: none !important; }
+  .gauge.is-in .gauge__nd { animation: none !important; }
+}

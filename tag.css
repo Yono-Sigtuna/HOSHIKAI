@@ -1,0 +1,255 @@
+/* 星海社 · 标签归档页（./tag/<标签>/）
+   ------------------------------------------------------------------
+   只写这一页新出现的东西；卡片 / 列表 / 分页 / 空态 / 面包屑全部复用 forum.css。
+
+   天文在结构里，不在装饰里：
+     · 页头 = 站里的格子条（望远镜 + 弧 + 逐格字 + 星环封口），色相取标签自己的 --hue；
+     · 分布 = 三簇星团（三个大板块 × 四个子板块），星点面积正比于该子板块的帖数 ——
+       这是这块图唯一的职责：回答「这个标签散落在哪」。
+   其余一律安静：白面、1.5px 细线、金色只给星等与第 1 名。 */
+
+.tg { padding-top: 0; }
+
+/* ============ 页头 ============ */
+/* .bv__head 本身是 flex + wrap（style.css），这里只加「右边放分布」这条约束 */
+.tg__head { align-items: flex-end; }
+.tg__sub { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0; }
+/* .mag 默认 margin-left:auto（那是卡面右下角用的），页头这里要在行内 */
+.tg__sub .mag { margin-left: 0; }
+
+/* 分布：三簇星团 */
+.tg-dist { flex: none; width: 336px; max-width: 100%; margin-left: auto; }
+.tg-dist__row { display: flex; gap: 4px; }
+.tg-cst { flex: 1 1 0; min-width: 0; text-align: center; }
+.tg-cst__svg {
+  display: block; width: 100%; height: 42px; overflow: visible;
+  color: hsl(var(--hue, 218) 66% 52%);
+}
+/* 星座连线是「这几个子板块同属一个板块」的分组线，不是数据轴 —— 所以压到 0.3 */
+.tg-cst__ln { fill: none; stroke: currentColor; stroke-width: 1; opacity: .3; }
+.tg-cst__d { fill: currentColor; }
+/* 0 帖的子板块留一颗空心点：**没有**也是一种信息，不能直接消失 */
+.tg-cst__d--zero { fill: none; stroke: currentColor; stroke-width: 1; opacity: .38; }
+.tg-cst__nm { display: block; margin-top: 1px; font-size: 11.5px; color: var(--ink); letter-spacing: .04em; }
+.tg-dist__legend { display: block; margin-top: 3px; font-size: 11px; color: var(--ink-faint); text-align: right; }
+
+/* ============ 板块角标 ============
+   标签页的帖来自十二个板块，所以卡片上要回答「它属于哪个板块」。
+   胶囊形状借 .tag，取色换成板块色相；压在封面上时换成深底白字（与 .tc__mag 同一套处理）。 */
+.tg-bd {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 7px;
+  border-radius: var(--r-pill); white-space: nowrap;
+  font-size: 11.5px; font-weight: 500; line-height: 1;
+  color: hsl(var(--bh, 218) 52% 30%);
+  background: hsl(var(--bh, 218) 88% 96%);
+  border: 1px solid hsl(var(--bh, 218) 55% 85%);
+}
+[data-theme="dark"] .tg-bd {
+  color: hsl(var(--bh, 218) 70% 82%);
+  background: hsl(var(--bh, 218) 32% 18%);
+  border-color: hsl(var(--bh, 218) 38% 34%);
+}
+.tc__chips .tg-bd {
+  height: 21px; color: #fff;
+  background: rgba(8, 14, 40, .55);
+  border-color: rgba(255, 255, 255, .3);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+}
+.tg-bd--sm { height: 18px; padding: 0 6px; font-size: 11px; }
+
+/* ============ 工具栏 / 列表容器 ============ */
+/* 卡片网格不挂第二条轨道弧，所以不需要 forum.css 给 .tgridwrap 留的那 46px */
+.tg .tgridwrap { margin-top: 18px; }
+.tg .bd__bar { margin-top: 22px; }
+.tg .bd__topics[data-view="list"] .tlist { margin-top: 18px; }
+
+/* ============ 相关标签 ============ */
+.tg-rel {
+  margin: 32px 0 10px; padding: 18px 20px 20px;
+  border: 1.5px solid var(--line-soft); border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  box-shadow: var(--shadow-sm);
+}
+.tg-rel[hidden] { display: none; }
+.tg-rel__h { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 600; color: var(--ink-deep); }
+.tg-rel__d { margin: 5px 0 13px; font-size: 12.5px; color: var(--ink-soft); }
+.tg-rel__row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tg-rel__t { font-size: 12.5px; transition: border-color .16s var(--ease), background-color .16s var(--ease); }
+.tg-rel__t:hover { border-color: hsl(var(--th, 218) 62% 52%); }
+.tg-rel__t:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; }
+.tg-rel__t i {
+  margin-left: 6px; font-style: normal;
+  font-family: var(--font-mono); font-size: 11px; opacity: .78;
+}
+
+/* ============ 标签索引（./tag/） ============
+   201 个标签 = 一张星图 + 一份列表。
+   星图里**每个名字都常驻**，位置由 JS 按实测宽度做矩形排布（`packNebula`）；
+   这里只写「一颗星长什么样」：径向渐变芯 + 辉光 + 常驻错相微闪，悬停/聚焦放大提亮。
+   颜色只有两色（核心金 / 其余冰蓝）—— 201 个随机色相在一屏里只会变成糖果珠。 */
+.tg-find { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+/* .search 在 ≤640 会被顶栏那条 media 规则整个隐藏；这里是页面内的筛选条，必须显式留下 */
+.tg-find .search { display: flex; width: 330px; max-width: 100%; height: 40px; }
+.tg-find__n { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); }
+.tg-view { margin-left: auto; }
+.tg-view[hidden] { display: none; }
+
+/* ── 星图 ──
+   视口固定大小、内部画布 1.5 倍 ⇒ 需要拖动。cursor / touch-action 都在这里定。 */
+.neb {
+  position: relative; margin-top: 18px;
+  height: clamp(820px, 90vh, 1000px);
+  border: 1.5px solid var(--line-soft); border-radius: var(--r-lg);
+  overflow: hidden; cursor: grab; touch-action: none;
+  background:
+    radial-gradient(40% 38% at 50% 50%, color-mix(in srgb, var(--c300) 52%, transparent), transparent 72%),
+    radial-gradient(72% 72% at 50% 50%, color-mix(in srgb, var(--y300) 24%, transparent), transparent 78%),
+    radial-gradient(120% 120% at 50% 50%, transparent 55%, color-mix(in srgb, var(--c200) 62%, transparent)),
+    linear-gradient(180deg, var(--surface), var(--c100));
+  box-shadow: var(--shadow-sm);
+  -webkit-user-select: none; user-select: none;
+}
+.neb.is-drag { cursor: grabbing; }
+.neb:focus-visible { outline: 2px solid var(--c700); outline-offset: 3px; }
+.neb__field { position: absolute; left: 0; top: 0; }
+.neb[hidden], .neb__legend[hidden], .tg-list[hidden] { display: none; }
+/* 星座图（骨架 / 边界 / 座名）。画在星点后面，字压在线上时靠 text-shadow 的底光隔开。 */
+.neb__web {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  z-index: 0; pointer-events: none; color: var(--c600); overflow: visible;
+}
+/* 真实星座骨架：连线与骨架星点 */
+.neb__fig-line { stroke: hsl(var(--gh, 218) 62% 50%); stroke-opacity: .5; stroke-width: 1.3; }
+.neb__fig-star { fill: hsl(var(--gh, 218) 72% 56%); }
+.neb__cst-ring {
+  fill: none; stroke: hsl(var(--gh, 218) 55% 50%);
+  stroke-opacity: .22; stroke-dasharray: 4 6; stroke-width: 1;
+}
+.neb__cst-nm {
+  font-family: var(--font-display); font-size: 13px; letter-spacing: .16em;
+  fill: hsl(var(--gh, 218) 45% 36%);
+}
+/* 夏日大三角：三条更实的虚线 + 中央小注 */
+.neb__tri { stroke: hsl(218 62% 52%); stroke-opacity: .3; stroke-width: 1.2; stroke-dasharray: 5 6; }
+.neb__aster {
+  font-family: var(--font-display); font-size: 11px; letter-spacing: .34em;
+  fill: color-mix(in srgb, var(--ink) 52%, transparent);
+  paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round;
+}
+[data-theme="dark"] .neb__tri { stroke: hsl(218 74% 68%); stroke-opacity: .38; }
+[data-theme="dark"] .neb__aster { fill: color-mix(in srgb, var(--ink) 62%, transparent); }
+[data-theme="dark"] .neb__fig-line { stroke-opacity: .62; stroke: hsl(var(--gh, 218) 72% 68%); }
+[data-theme="dark"] .neb__fig-star { fill: hsl(var(--gh, 218) 82% 78%); }
+[data-theme="dark"] .neb__cst-ring { stroke-opacity: .3; stroke: hsl(var(--gh, 218) 65% 62%); }
+[data-theme="dark"] .neb__cst-nm { fill: hsl(var(--gh, 218) 70% 76%); }
+/* 核心：金调的一小片亮区，暗示「越往中间越热」 */
+.neb__halo {
+  position: absolute; left: 50%; top: 50%; width: 13%; height: 11%; z-index: 0;
+  transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--y300) 70%, transparent), transparent 70%);
+  animation: nebPulse 6.5s ease-in-out infinite;
+}
+@keyframes nebPulse { 0%, 100% { opacity: .72; transform: translate(-50%, -50%) scale(1); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); } }
+
+/* 一颗星 = 圆点 + 名字（名字在流内，packNebula 才量得到宽度） */
+.neb__s {
+  position: absolute; left: 0; top: 0; z-index: 1;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 1px 3px; border-radius: 999px;
+  white-space: nowrap;
+  transition: opacity .2s var(--ease);
+}
+.neb__s:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; }
+.neb__s.is-dim { opacity: .12; pointer-events: none; }
+/* 兜底：真排不下就不显示（探针会抓 is-unplaced，不允许悄悄丢） */
+.neb__s.is-unplaced { display: none; }
+
+.neb__dot {
+  flex: none;
+  display: block; width: calc(var(--r) * 2); height: calc(var(--r) * 2); border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #fff, #7ba3f2 50%, #3f68d8);
+  box-shadow: 0 0 calc(var(--r) * 1.8) rgba(63, 104, 216, .5);
+  animation: nebTw var(--tw, 7s) ease-in-out infinite;
+  animation-delay: var(--td, 0s);
+  transition: transform .18s var(--ease), box-shadow .18s var(--ease);
+}
+.neb__s.is-core .neb__dot {
+  background: radial-gradient(circle at 35% 32%, #fffdf4, var(--y400) 48%, var(--y600));
+  box-shadow: 0 0 calc(var(--r) * 2.4) color-mix(in srgb, var(--y600) 70%, transparent), 0 0 3px #fff;
+}
+.neb__s:hover .neb__dot,
+.neb__s:focus-visible .neb__dot {
+  transform: scale(1.55);
+  box-shadow: 0 0 15px 3px rgba(122, 164, 255, .8), 0 0 3px #fff;
+}
+.neb__s.is-core:hover .neb__dot,
+.neb__s.is-core:focus-visible .neb__dot {
+  box-shadow: 0 0 16px 3px color-mix(in srgb, var(--y500) 85%, transparent), 0 0 3px #fff;
+}
+@keyframes nebTw { 0%, 100% { opacity: 1 } 50% { opacity: .42 } }
+
+/* 名字：常驻。三层深浅 —— 核心最深最粗、中层正墨、外层浅墨。
+   这样 201 个名字在，但眼睛先看到热的。悬停/聚焦/过滤命中时回到标签色相。 */
+.neb__nm {
+  font-size: 10.5px; line-height: 1; white-space: nowrap;
+  color: var(--ink-soft);
+  text-shadow: 0 0 4px var(--surface), 0 0 3px var(--surface);   /* 压在星座连线上也读得清 */
+  transition: color .18s var(--ease);
+}
+.neb__s.is-mid .neb__nm { color: var(--ink); font-size: 11px; }
+.neb__s.is-core .neb__nm { color: var(--ink-deep); font-size: 12px; font-weight: 600; }
+.neb__s:hover .neb__nm,
+.neb__s:focus-visible .neb__nm,
+.neb__s.is-found .neb__nm { color: hsl(var(--h, 218) 55% 34%); }
+[data-theme="dark"] .neb__s:hover .neb__nm,
+[data-theme="dark"] .neb__s:focus-visible .neb__nm,
+[data-theme="dark"] .neb__s.is-found .neb__nm { color: hsl(var(--h, 218) 70% 76%); }
+
+.neb__legend { margin: 8px 0 0; font-size: 11.5px; color: var(--ink-faint); text-align: right; }
+.neb__legend a { color: var(--link-page); text-decoration: underline; text-underline-offset: 3px; }
+.neb__legend a:hover { color: var(--hot-link); }
+
+/* ── 列表 ── */
+.tg-list {
+  list-style: none; margin: 18px 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px 12px;
+}
+.tg-row[hidden] { display: none; }
+.tg-row__a {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+  padding: 9px 12px; border: 1.5px solid var(--line-soft); border-radius: 12px;
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  transition: border-color .16s var(--ease), box-shadow .18s var(--ease);
+}
+.tg-row__a:hover { border-color: var(--c600); box-shadow: var(--shadow-sm); }
+.tg-row__a:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; }
+.tg-row__i { font-family: var(--font-mono); font-size: 11px; font-weight: 400; color: var(--ink-faint); }
+.tg-row__t { font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tg-row__n { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-faint); }
+.tg-row__a .mag { margin-left: 0; }
+
+/* ============ 断点 ============ */
+@media (max-width: 980px) {
+  .tg__head { display: block; }
+  .tg-dist { width: 100%; margin: 18px 0 0; }
+  .tg-dist__legend { text-align: left; }
+}
+@media (max-width: 640px) {
+  .tg__sub { gap: 8px; }
+  .tg-dist { margin-top: 14px; }
+  .tg-cst__svg { height: 36px; }
+  .tg-cst__nm { font-size: 11px; }
+  .tg-find .search { width: 100%; }
+  .tg-find__n { display: none; }
+  .tg-view { margin-left: 0; }
+  .tg-rel { padding: 16px 15px 17px; }
+  .neb { height: 520px; }
+  .neb__legend { text-align: left; }
+  .tg-view { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tg-rel__t { transition: none; }
+  .neb__dot, .neb__halo { animation: none; }
+  .neb__s, .neb__dot, .neb__nm, .tg-row__a { transition: none; }
+}

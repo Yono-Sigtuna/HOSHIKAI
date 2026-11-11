@@ -1,0 +1,159 @@
+/* 星海社 · 消息·通知页
+   ==================================================================
+   ⚠️ 这一版的目标是**做一个正常的收件箱**，不是做一个天文图形展。
+      前两轮我把工具页当展览页做（食分 / 星座 / 色温），要你先解码一个图形才看得懂 ——
+      方向从头就错了。站里现有的页面没有一个是这么干的：板块页就是规规矩矩的卡片网格，
+      天文在**材料**里（星图封面、星等徽章、望远镜格子条），不在结构里。
+
+   ⇒ 特色只用用户点名的那三样，**全是站里已经有的东西**：
+      ① 星等   站里那把热度尺（0.6–6.5，越小越亮），跟着人走，不用「粉丝数 / 等级」
+      ② k-*    站里那九枚天文图标里的五枚，按语义分给五种通知（见 _msg.js 顶部那张表）
+      ③ 星位   空壳＝还没点亮 —— HUD 里已有的那条语言，这里读作「未读」
+
+   ⚠️ 颜色一律走站内令牌。正文一律 --ink / --ink-soft / --ink-faint。 */
+
+/* ══════════════════ 页头 ══════════════════ */
+.msg-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
+.msg-head h1 { margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 700; color: var(--ink-deep); letter-spacing: .04em; }
+.msg-head__sub { margin: 0; font-size: 12px; color: var(--ink-faint); letter-spacing: .08em; }
+.msg-head__n { margin: 0 0 4px auto; font-size: 13px; color: var(--ink-soft); }
+.msg-head__n b { font-family: var(--font-display); font-size: 20px; color: var(--ink-deep); }
+
+/* ══════════════════ 筛选栏 ══════════════════
+   五个分类 = 五种通知。图标就是站里那套，跟行里的图标同一枚 —— 一眼对得上。 */
+.msg-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 14px; padding-bottom: 12px; border-bottom: 1.5px solid var(--line-soft); }
+.msg-tab {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+  border: 1.5px solid var(--line); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink-soft); font: inherit; font-size: 13px; cursor: pointer;
+  transition: color .16s var(--ease), border-color .16s var(--ease), background-color .16s var(--ease);
+}
+.msg-tab__i { width: 14px; height: 14px; color: var(--y-text); }
+.msg-tab:hover { color: var(--link); border-color: var(--c500); }
+.msg-tab[aria-pressed="true"] { color: #fff; border-color: transparent; background: var(--deep-grad); }
+.msg-tab[aria-pressed="true"] .msg-tab__i { color: var(--y300); }
+.msg-tab__n {
+  font-family: var(--font-mono); font-size: 11px; font-style: normal; line-height: 1;
+  padding: 2px 6px; border-radius: var(--r-pill);
+  background: linear-gradient(135deg, var(--c500), var(--c700));
+  color: #fff; font-weight: 600;
+  box-shadow: 0 0 8px rgba(74, 114, 232, .28);
+}
+.msg-tab[aria-pressed="true"] .msg-tab__n { background: rgba(255, 255, 255, .28); color: #fff; box-shadow: none; }
+
+.msg-tools { display: flex; align-items: center; gap: 12px; margin-top: 10px; min-height: 30px; }
+.msg-tools__hint { font-size: 12px; color: var(--ink-faint); }
+.msg-tools__read {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: auto;
+  height: 30px; padding: 0 12px; border: 1.5px solid color-mix(in srgb, var(--c500) 70%, transparent);
+  border-radius: var(--r-pill); background: none; color: var(--c800); font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.msg-tools__read .i { width: 14px; height: 14px; color: var(--y-text); }
+.msg-tools__read:hover { background: color-mix(in srgb, var(--c100) 80%, transparent); border-color: var(--c600); }
+
+/* ══════════════════ 列表 ══════════════════ */
+.msg-list { margin: 6px 0 0; padding: 0; list-style: none; }
+.msg-day { display: flex; align-items: center; gap: 10px; margin: 18px 0 6px; }
+.msg-day span { font-family: var(--font-display); font-size: 13.5px; font-weight: 700; color: var(--ink-soft); letter-spacing: .08em; }
+.msg-day::after { content: ''; flex: 1; height: 1px; background: var(--line-soft); }
+.msg-list > .msg-day:first-child { margin-top: 6px; }
+
+/* ⚠️ 奇偶条纹挂在 `<li>` 上、**通栏** —— 不给圆角也不缩进。
+   第一版把一个圆角 hover 块套在行里，那样加条纹会变成「一排浮起来的小药片」。
+   ⚠️ 奇偶由 JS 打 `is-alt`（按每个日期档各自从 0 数）：CSS 的 `:nth-child(2n)`
+   会被兄弟里的 `.msg-day` 分隔条打乱。 */
+.msg-row { min-width: 0; }
+.msg-row.is-alt { background: color-mix(in srgb, var(--c300) 42%, transparent); }
+.msg-row__a {
+  display: grid;
+  /* 左半「谁·做了什么」按内容宽，右半「哪条帖·哪个板块」吃掉剩下的，时间在最右 */
+  grid-template-columns: 22px 38px max-content minmax(0, 1fr) auto;
+  align-items: center; gap: 16px; min-width: 0;
+  padding: 9px 12px;
+  text-decoration: none; color: inherit;
+  transition: background-color .16s var(--ease);
+}
+.msg-row__a:hover { background: color-mix(in srgb, var(--c600) 16%, transparent); }
+
+/* ── 星位：空壳＝还没点亮（未读） · 点亮＝已读 ──
+   这条语言是 **HUD 里已有的**（「空壳键＝没点亮的星位」），不是这一页新造的。
+   注意别写反：这里「点亮」的是**读过**的。 */
+.msg-lit { display: grid; place-items: center; width: 22px; height: 22px; }
+.msg-lit__shell {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1.6px dashed color-mix(in srgb, var(--c700) 58%, transparent);
+  background: color-mix(in srgb, var(--c100) 80%, transparent);
+  /* 未读标记：轻微脉动 */
+  animation: msg-pulse 2.4s var(--ease) infinite;
+}
+.msg-lit__star { width: 14px; height: 14px; color: color-mix(in srgb, var(--y700) 72%, transparent); fill: currentColor; }
+
+@keyframes msg-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: .88; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .msg-lit__shell { animation: none; }
+}
+
+.msg-av {
+  display: grid; place-items: center; width: 38px; height: 38px;
+  border-radius: 12px; font-family: var(--font-display); font-size: 17px; font-weight: 700; line-height: 1;
+  background: hsl(var(--hue, 220) 62% var(--av-bg-l));
+  color: hsl(var(--hue, 220) 55% var(--av-fg-l));
+  box-shadow: 0 0 0 1.5px hsl(var(--hue, 220) 66% 62% / .38);
+}
+
+/* 左半：类型图标 + 谁 + 做了什么 */
+.msg-t { display: flex; align-items: center; gap: 7px; font-size: 14px; color: var(--ink); white-space: nowrap; }
+.msg-t__i { width: 15px; height: 15px; color: var(--y-text); flex: none; }
+.msg-t b { color: var(--by); font-weight: 600; }
+.msg-row.is-unread .msg-t { color: var(--ink-deep); }
+.msg-row.is-unread .msg-t b { font-weight: 700; }
+
+/* 右半：哪条帖 · 哪个板块。
+   ⚠️ 标题 `flex: 1` —— 让**它**吃掉多余宽度，把「板块」一直推到时间旁边去。
+      第一版标题是自然宽，于是标题与时间之间留了 600px 的空 —— 用户说的「右边只有时间、
+      信息全挤左边」就是这个。现在这一格从左到时间之间处处有内容。 */
+.msg-s { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.msg-s__t {
+  flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 13px; color: var(--ink-soft);
+}
+.msg-row.is-unread .msg-s__t { color: var(--ink); }
+.msg-s__bq { flex: none; font-style: normal; font-size: 11.5px; color: var(--ink-faint); white-space: nowrap; }
+.msg-s__bq::before { content: '· '; }
+
+.msg-r { display: flex; align-items: center; white-space: nowrap; }
+.msg-r__t { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--ink-faint); }
+.msg-row.is-unread .msg-r__t { color: var(--ink-soft); }
+
+/* ══════════════════ 空态 ══════════════════ */
+.msg-empty { padding: 44px 0 52px; text-align: center; }
+.msg-empty__m { display: inline-flex; color: var(--c600); }
+.msg-empty__m .i { width: 32px; height: 32px; }
+.msg-empty p { margin: 12px 0 0; font-size: 13px; color: var(--ink-faint); }
+
+/* ══════════════════ 窄屏 ══════════════════ */
+@media (max-width: 900px) {
+  .msg-row__a { grid-template-columns: 20px 34px max-content minmax(0, 1fr) auto; gap: 12px; }
+  .msg-av { width: 34px; height: 34px; border-radius: 11px; font-size: 16px; }
+}
+/* ⚠️ 门槛跟探针里那条「板块在 ≤600 是故意收起来的」对齐 —— 两边口径必须是一个数，
+   否则会出现「设计 900 就藏了、断言 600 才放过」这种自己骗自己的绿。 */
+@media (max-width: 600px) {
+  .msg-head__n { margin-left: 0; }
+  /* 一条横线放不下四样 —— 拆两行：第一行「谁·做了什么」+ 时间，第二行「哪条帖」 */
+  .msg-row__a {
+    grid-template-columns: 18px 32px minmax(0, 1fr) auto;
+    gap: 5px 10px; padding: 10px;
+  }
+  .msg-lit { grid-column: 1; grid-row: 1 / 3; }
+  .msg-av { grid-column: 2; grid-row: 1 / 3; width: 32px; height: 32px; border-radius: 10px; font-size: 15px; }
+  .msg-t { grid-column: 3; grid-row: 1; font-size: 13px; }
+  .msg-r { grid-column: 4; grid-row: 1; }
+  .msg-s { grid-column: 3 / 5; grid-row: 2; }
+  .msg-t__i { width: 14px; height: 14px; }
+  .msg-s__bq { display: none; }
+}

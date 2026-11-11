@@ -1,0 +1,138 @@
+/* 星海社 · 站点地图（./sitemap.html）
+   ==================================================================
+   读法：一张**星表**。每行一个入口，左侧一枚四角星：
+     实心 = 主航段；空心 = 天区 / 工具 / 待开放。
+   星只表示层级，不表示热度 —— 文案里明说。
+   天文住在材料里：格子条抬头、星点、板块色相、背景；不做结构层星座图。
+   ⚠️ 颜色全部走站内令牌；正文最小 12px（站点硬规则）。 */
+
+/* 一整张“星表”放在一片半透明面板上：背景的星空/画面从边缘透出来，
+   但文字落在可读的面上（与发帖页的 .cp 同一种材料处理）。 */
+.sm {
+  margin: 14px 0 48px;
+  padding: 20px 26px 30px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(1.06);
+  backdrop-filter: blur(10px) saturate(1.06);
+  border: 1.5px solid var(--line-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── 抬头：站里的格子条 ── */
+.sm-hero {
+  display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap;
+  margin: 8px 0 24px; padding-bottom: 18px;
+  border-bottom: 1.5px solid var(--line-soft);
+}
+.sm-hero__l { flex: 1 1 520px; min-width: 0; }
+.sm-h1 { display: block; margin: 0 0 2px; line-height: 0; }
+.sm-h1 .fs { --tile: clamp(24px, 2.6vw, 38px); }
+.sm-h1__fs { display: inline-block; }
+/* 本页不加载 forum.css；弧的描线生长规则自己补（与 settings.css 同一条理由）。 */
+.sm-h1.is-drawn .orbit__line { stroke-dashoffset: 0; }
+.sm-lead {
+  margin: 12px 0 0; max-width: 64ch;
+  font-size: 13px; line-height: 1.85; color: var(--ink-soft);
+}
+.sm-lead b { font-weight: 600; color: var(--ink); }
+
+/* 目录统计：两个数字，不是一组装饰徽章 */
+.sm-stat {
+  flex: none; display: flex; gap: 26px; padding-bottom: 4px;
+  font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint);
+}
+.sm-stat b {
+  display: block; margin-bottom: 2px;
+  font-family: var(--font-display); font-size: 26px; font-weight: 600;
+  line-height: 1; color: var(--ink-deep);
+}
+
+/* ── 组 ── */
+.sm-grp { margin: 26px 0 0; }
+.sm-grp__h {
+  display: flex; align-items: baseline; gap: 10px;
+  margin: 0 0 6px; padding-bottom: 7px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.sm-grp__n { font-family: var(--font-mono); font-size: 12px; color: var(--y-text); }
+.sm-grp__t {
+  font-family: var(--font-display); font-size: 19px; font-weight: 600;
+  color: var(--ink-deep); letter-spacing: .03em;
+}
+.sm-grp__c { margin-left: auto; font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); }
+
+/* ── 星表行 ── */
+.sm-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 28px; }
+.sm-list--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sm-row {
+  display: grid; grid-template-columns: 14px minmax(0, 1fr) auto;
+  gap: 10px; align-items: start;
+  padding: 10px 8px 10px 0;
+  border-bottom: 1px solid var(--line-soft);
+  color: inherit; text-decoration: none;
+  transition: background-color .16s var(--ease);
+}
+.sm-row:hover { background: linear-gradient(90deg, color-mix(in srgb, var(--c100) 72%, transparent), transparent); }
+.sm-row:focus-visible { outline: 2px solid var(--c700); outline-offset: -2px; border-radius: 4px; }
+.sm-star { display: block; width: 13px; height: 13px; margin-top: 4px; color: var(--ink-faint); }
+.sm-star.is-solid { color: var(--y-text); }
+.sm-star svg { display: block; width: 100%; height: 100%; }
+.sm-row__t { min-width: 0; }
+.sm-row__t b { display: block; font-size: 14px; font-weight: 600; color: var(--ink); }
+.sm-row__d { display: block; margin-top: 2px; font-size: 12.5px; line-height: 1.65; color: var(--ink-soft); }
+.sm-row__p {
+  font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint);
+  white-space: nowrap; padding-top: 1px;
+}
+.sm-row:hover .sm-row__p { color: var(--ink-soft); }
+
+/* ── 十二天区：3 个大板块 × 4 个子板块 ── */
+.sm-boards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 26px; }
+.sm-board__h {
+  display: flex; align-items: center; gap: 8px;
+  margin: 8px 0 2px; font-size: 13px; font-weight: 600; color: var(--ink-deep);
+}
+.sm-board__dot {
+  flex: none; width: 8px; height: 8px; border-radius: 50%;
+  background: hsl(var(--bh, 218) 62% 52%);
+  box-shadow: 0 0 0 2px hsl(var(--bh, 218) 62% 52% / .16);
+}
+.sm-board__n { margin-left: auto; font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--ink-faint); }
+.sm-board .sm-row { grid-template-columns: 13px minmax(0, 1fr); padding: 8px 4px; }
+.sm-board .sm-row__p { display: none; }
+
+/* ── 待开放：不是链接，虚线行 + 标签 ── */
+.sm-grp--off { margin-top: 34px; }
+.sm-grp--off .sm-grp__h { border-bottom-style: dashed; }
+.sm-row--off { cursor: default; border-bottom-style: dashed; }
+.sm-row--off:hover { background: none; }
+.sm-off {
+  align-self: center; margin-top: 2px;
+  padding: 1px 8px; border: 1px dashed color-mix(in srgb, var(--y-text) 55%, transparent);
+  border-radius: var(--r-pill);
+  font-family: var(--font-mono); font-size: 12px; color: var(--y-text); white-space: nowrap;
+}
+
+/* ── 断点 ── */
+@media (max-width: 980px) {
+  .sm-boards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sm-list--2 { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .sm-hero { gap: 14px; margin-bottom: 18px; }
+  .sm-hero__l { flex-basis: 100%; }
+  .sm-stat { gap: 22px; }
+  .sm-stat b { font-size: 22px; }
+  .sm-grp { margin-top: 22px; }
+  .sm-grp__t { font-size: 17px; }
+  .sm-boards { grid-template-columns: minmax(0, 1fr); }
+  .sm-row { grid-template-columns: 14px minmax(0, 1fr); }
+  .sm-row__p { display: none; }
+  .sm-board .sm-row { grid-template-columns: 13px minmax(0, 1fr); }
+  .sm-row--off { grid-template-columns: 14px minmax(0, 1fr) auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sm-row { transition: none; }
+}

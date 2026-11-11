@@ -1,0 +1,3492 @@
+/* 星海社 · 版式二「星座网格」
+   血统：Bento 不等尺寸卡片拼贴 + SVG 星座连线最新回复流
+   与 v1 共享同一套设计令牌，但排版结构完全不同（v1 是巢状行，v2 是拼贴）。 */
+
+/* ============ 设计令牌 ============ */
+:root {
+  /* 星空蓝 —— 主色系 */
+  --c100: #f8f9ff;  --c200: #e8eeff;  --c300: #d0daff;  --c400: #c5d0ff;
+  --c500: #b8ccff;  --c600: #7aa4ff;  --c700: #4a72e8;  --c800: #1e3fc0;
+  /* 藏青 —— 文字 */
+  --ink: #2a3060;   --ink-deep: #0f246e;
+  --ink-soft: #4d5578;   /* 卡底 6.92:1 */
+  --ink-faint: #5c6488;  /* 卡底 5.50:1（原 4.57，余量太小） */
+  /* 奶黄 —— 点缀 */
+  --y100: #fffef8;  --y200: #fff9e8;  --y300: #fff1c9;  --y400: #ffe7a3;
+  --y500: #f6d889;  --y600: #dfbd65;  --y700: #bf9a42;  --y-ink: #5d4b20;
+  --y-text: #8a6a1f;   /* 加深过的金色，专供小字与图标（原色对比度不足 4.5:1） */
+  /* 金色、但**压在页面底上**（不是压卡底）。--y-text 是为卡底调的，照片透出量翻倍之后
+     在页面底上只有 2.46:1；这个深金实测 5.44:1。（--y-ink #5d4b20 只有 4.25:1，不够，
+     所以没有复用它。）目前只有一个消费者：.strip__cap。 */
+  --y-page: #3d3010;
+  /* 强调 */
+  --pink: #d875a0;  --hot: #e0563f;
+
+  --surface: #ffffff;
+  --line: var(--c300);
+  --line-soft: #e4e9fb;
+  --by: #26417f;            /* 作者名：比时间更深一档，对比度 ≈ 9.8:1 */
+  --hot-link: #b35110;      /* 帖子标题 hover，白底对比度 ≈ 5.1:1 */
+  /* 按钮/胶囊用的深一档渐变：白字落在最浅一格也要 ≥ 4.5:1 */
+  --deep-grad: linear-gradient(150deg, #3a63dd, var(--c800));
+
+  --r-sm: 8px;  --r: 12px;  --r-lg: 16px;  --r-pill: 999px;
+
+  /* —— 版面尺寸（第 33 轮：内容栏加到 1400，并把星空的留白**先划出来**）——
+     ⚠️ 这四个数是**推导关系**，不要单独改其中一个：
+        `--wrap-gutter` = 2 ×(星空最小带宽 + 内缩)，正好是星空存活所需的整幅边距。
+     内容栏由此变成「**先扣掉星空那条带子，再取剩下的**」，而不是「先铺满、剩多少算多少」。
+     后者（旧口径 `100% - 40px`）会让栏宽一涨、星空当场归零 —— 那正是这一轮要拆掉的悬崖。
+     `--wrap-gutter` 与 theme.js 的 44/8 是同一个来源；`theme.js` 现在**直接量 `.wrap` 的实测宽**，
+     所以两边不会各说各话。 */
+  --wrap-w: 1400px;
+  --sky-band: 44px;
+  --sky-inset: 8px;
+  --wrap-gutter: calc(2 * var(--sky-band) + 2 * var(--sky-inset));   /* = 104px */
+
+  /* —— 主题相关令牌：暗色主题只覆盖这一段，组件规则一律走令牌取色 —— */
+  --bg-a: #edf1ff;  --bg-b: #fff8e6;                       /* 页面底·两处光晕 */
+  --bg-c1: #fbfcff; --bg-c2: #f3f6ff; --bg-c3: #f8f9ff;    /* 页面底·主渐变 */
+  /* 页面底配方。抽成令牌是因为它现在有第二个消费者：背景轮播层的洗色层要用
+     **同一份配方**压在那 7 张 CG 上 —— 同一份配方 + 一个不透明度，就得到
+     「页面本身的颜色 + 一点点照片」，而且暗色主题一覆盖就自动跟着翻，
+     洗色层不需要任何自己的颜色令牌。 */
+  --page-bg:
+    radial-gradient(1100px 560px at 12% -6%, var(--bg-a) 0%, transparent 62%),
+    radial-gradient(900px 520px at 96% 2%, var(--bg-b) 0%, transparent 56%),
+    linear-gradient(var(--bg-c1), var(--bg-c2) 55%, var(--bg-c3));
+  /* 洗色层的不透明度：照片能透出多少 = 1 - --bg-veil。越大越淡、越安全。
+     合成公式是确定的（CSS 在 **sRGB 通道**空间按 alpha 混，不是线性光）：
+       结果 = --bg-veil × 页面底 + (1 - --bg-veil) × 照片像素
+     实测这 7 张 CG **每一张都含大片纯黑与纯白像素**（galgame 的夜景/校服/黑边框），
+     所以「最不利底 = 页面底与纯黑按 veil 相混」是**解析解**，不必靠取样碰运气：
+       亮色 0.72×(243,246,255) + 0.28×(0,0,0)   = rgb(175,177,184) → --ink 5.80:1
+       暗色 0.72×(26,20,48)   + 0.28×(255,255,255) = rgb(90,86,106)   → --ink 5.92:1
+     这一轮用户来回调了三次，最后落在 **0.72**（照片透出 28%）：
+       0.75 →「还是有点看不清」；0.68 →「又太透了」→ 0.72 正好是两次抱怨的中点。
+     ⚠️ **不要再往 0.65 及以下走**：那里 --ink 只剩 **4.57:1**，而本项目**自己有一条先例** ——
+        `--ink-faint` 的注释写着「卡底 5.50:1（原 4.57，余量太小）」，4.57 当年是被判过薄的。
+     ⚠️ **模糊换不出余量**：试过给 .bg__l 加 blur，指望糊掉细黑线来抬最暗像素 ——
+        **实测无效**（blur 到 24px，局部最暗仍是 0.000），因为这些 CG 里是**成片的纯黑**，
+        不是细描边。所以「加模糊 + 再降 veil」这条路是死的，别再试一遍。
+
+     变动史（每一次都是因为「谁在依赖它的旧值」）：
+       0.88 + --ink-soft  亮 5.13:1  ← 原始值，背景几乎看不见
+       0.75 + --ink-soft  亮 3.69:1  ← 破线，所以裸底那几处改用 --ink（6.30:1）
+       0.68 + --ink       亮 5.19:1  ← 「再清楚一点」
+       0.72 + --ink       亮 5.80:1  ← 「又太透了」→ 收回一点（当前值）
+     裸底的就是 .bv__sub / .bv__quote / .panel__desc 三处（加板块页的面包屑，见 forum.css）。
+     （.legend__txt 与 .footer__* 也用 --ink-soft，但压在 --footer-bg 那层半透白上、
+       比页面底更亮，0.65 下仍有约 6.6:1 —— 不动，免得白丢一层层级。）
+     卡片有自己的不透明底，完全不受照片影响 —— 也就是说**卡片覆盖的区域背景一直透不出来**，
+     想让背景在卡内也可见，得把卡片改半透（另一件事，没做）。 */
+  --bg-veil: .72;
+  --topbar-bg: rgba(255, 255, 255, .72);
+  --topbar-edge: #ffffff;
+  --footer-bg: rgba(255, 255, 255, .8);
+  --link: #1e3fc0;                                          /* 链接/强调文字色（与 --c800 分离，暗色下方向相反）。
+     全站大部分链接都压在卡面/半透栏上，这个值够用；**只有裸在页面底上的**那几个
+     （首页的 .panel__more、板块页的面包屑 hover）需要更深一档，见 --link-page。 */
+  /* 裸在页面底上的链接专用。--link 在 --bg-veil .65 下只有约 3.4:1，这个实测 5.05:1。
+     单独开一个令牌、而不是把全站 --link 调深：否则会为了一个「更多 ›」拖闷整个站的链接蓝。 */
+  --link-page: #122a70;
+  --hue-bg-s: 90%;  --hue-bg-l: 97%;                       /* 色相派生：浅底 */
+  --hue-bd-s: 62%;  --hue-bd-l: 76%;                       /* 色相派生：边框 */
+  --hue-fg-s: 55%;  --hue-fg-l: 28%;                       /* 色相派生：文字
+     压浅底；28% 是为了让最不利的黄色系(60°)也能过 4.5:1（32% 时只有 4.20） */
+  --av-bg-l: 88%;   --av-fg-l: 24%;                        /* 头像首字色块 */
+
+  --font-display: "Noto Serif JP", "Noto Serif SC", "Yu Mincho", "Songti SC", serif;
+  --font-body: "Noto Sans SC", "Yu Gothic", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, "Consolas", "Noto Sans SC", monospace;
+  /* 圆体：HUD / 导航 / 播放器。⚠️ ZCOOL 必须在前 —— Zen Maru（日文圆体）只覆盖本站简体字的
+     一部分，同一个词里会出现「帖」用 Zen Maru、其余字掉到 ZCOOL 的混排（2026-11-07 实测）。 */
+  --font-round: "ZCOOL KuaiLe", "Zen Maru Gothic", var(--font-body);
+  --font-ui: var(--font-body);
+
+  /* ---- HUD 材料（组件域令牌，对齐站点已有的 --fs-* 先例）----
+     ⚠️ 下面这两句我之前**误读过两次**，留在这里防再犯：
+        · 用户贴旧版 `.hud__band` 的 CSS，指的是那个**形状**（底部实 → 往上快速透出 → 顶全透明），
+          **不是**那个颜色。所以「低调 / 高透明」＝**一条长渐变**，不是「一块平涂」。
+        · 而**颜色仍然要随主题翻**（第 9 条原话：「浅色模式下为什么还会有深蓝色呢？做浅色不行吗？」）
+          ⇒ 亮色主题下那条渐变是**浅的**。
+        两条合起来：**同一个形状、两套颜色**。别再退回平涂，也别退回「两主题同一套色」。
+     ⚠️ 翻转的是**亮度极性**（母题、键材料都不动）：字从近白变墨蓝、金从 --y400 换到 --y-text 那一档、
+        「冰白」那一档在浅底上变成墨蓝那一档。**值全部取自站点已有的令牌**（--ink-deep / --y-text /
+        --c400），不是新造的颜色。 */
+  --hud-void: #080f22;      /* 深空：深色语境下的描边内芯 / 硬投影（不翻） */
+  --hud-edge: #16264d;      /* 深墨蓝：2px 描边（不翻 —— 浅底上正好当轮廓线） */
+  --hud-ice: #cfe0ff;       /* 冰白：球面顶上的那道白高光（不翻） */
+  --hud-ink: #22346e;                  /* 台词 / 面板正文（暗色＝近白） */
+  --hud-ink-soft: #5c6488;             /* 次要字：歌手 · 专辑、时间 */
+  --hud-gold-s: #8a6a1f;               /* 金·强档：名牌 / 星等 / 主刻度 / 指针（＝站点 --y-text 那一档） */
+  --hud-gold-w: rgba(138, 106, 31, .42);  /* 金·弱档：**只做线** —— 盘环 / 副刻度 / 角饰 / 金十字 */
+  /* ⚠️ 金·**极淡底**：专供「选中」的整块底色（歌单的当前行 / 选中页签）。
+     为什么不复用 --hud-gold-w：那是**线**的令牌（见上一行注释），.42 不透明度铺成一整块，
+     在浅色主题下就是一坨土黄 —— 用户判词「死亡配色」里，除了封面那 5 个站外色相，
+     这块是**第二大的纯色块**。而且 .pl__tab 那段注释本来就写着「金细边 + **极淡**金底」——
+     说明本意如此，是**实现跟自己的注释写反了**，不是审美分歧。
+     ⚠️ 用法只此两处；「是当前这一首」另外靠 `.pl__row[data-cur]` 左边那道 3px 金线承担（金只做线）。 */
+  --hud-gold-tint: rgba(138, 106, 31, .13);
+  --hud-name-bg: linear-gradient(180deg, #b08a2c 6%, #8a6a1f 62%, #6b5116 100%);
+  --hud-ice-s: rgba(34, 52, 110, .72);    /* 「冰白·强档」在浅底上＝墨蓝强档 */
+  --hud-ice-w: rgba(34, 52, 110, .34);
+  --hud-plate: rgba(255, 255, 255, .72);  /* 胶囊 / 小板的底 */
+  --hud-plate-hi: rgba(255, 255, 255, .94);
+  --hud-shadow: rgba(30, 63, 192, .28);   /* 硬投影 —— 浅底上不能是纯黑（会显脏） */
+  --hud-outline: #ffffff;                 /* 台词 8 向描边：浅底上描白 */
+  --hud-glow: rgba(109, 138, 218, .68);   /* hover（星海）与星等徽章的辉光 */
+  --hud-tex-o: .07;  --hud-wm-o: .10;     /* 星野纹理 / 白色水印在浅底上只会脏 ⇒ 压到几乎看不见 */
+  --hud-wm-fill: #22346e;
+  /* ⚠️ **底带＝一条长渐变**，不是一块平涂。形状取自旧版 `.hud__band`（用户第八轮所指的那个）：
+     底部实（键那一排压得住）→ 42% → 74% 只剩 .22 → 顶上**全透明**。
+     所以**带子上半截基本是透的**，台词靠 8 向描边换可读性、不靠底板。
+     ⚠️ 亮色下用**站点自己的浅色**（近白 → --c200 那一档的淡蓝）；暗色见 [data-theme="dark"]。
+     ⚠️ **底段降得比中上段少**（第十轮用户「透明度再高一点」）：从上到下依次降
+     .96→.90 / .82→.66 / .36→.22 —— 中上段降了约 40%，底段只降 6 个百分点。
+     原因：底段坐着那九枚功能键，第四轮「键跟页面文字交错」就是底段太透造成的
+     （当时 `.93` 就露白胶囊）。**要再往上调透明度时，也是先动 42%/74% 那两格。 */
+  --hud-band: linear-gradient(to top,
+    rgba(252, 253, 255, .90) 0%, rgba(244, 248, 255, .66) 42%,
+    rgba(230, 238, 255, .22) 74%, transparent 100%);
+  /* — 走带球面（跨主题）：只剩播放器那三枚走带钮在用它。
+     ⚠️ 第 12 轮之前**功能键也共用这颗球**；现在功能键是**方格**（见「.keys」那段），
+        这里只剩 `.pl__tb` 一个消费者，所以**故意不在这里翻主题**。 */
+  --hud-ball: linear-gradient(180deg, #ffffff 0%, #eef4ff 40%, #c9d8f7 100%);
+  --hud-ball-ink: #22346e;
+  --hud-ball-top: rgba(255, 255, 255, .9);
+  --hud-ball-drop: rgba(30, 63, 192, .3);
+  /* ⚠️ `--hud-shell*` 四件套在第 12 轮**整组删除**：它原来只服务「空壳键＝没点亮的星位」这一个用途，
+     功能键改成方格之后「空壳」改用**虚线边**表达（站里 `.pl__row--ph` 已经有的那套语言），
+     球面材料再无消费者 —— 留着就是死令牌。 */
+  /* 功能键格子的尺寸。
+     ⚠️ 第 13 轮功能栏改成**横铺在文本框底下**，所以「列数」那个令牌没有了（`--k-cols` 已删）。
+     ⚠️ **`--k-indent` 也在第 14 轮删掉了** —— 它是第 13 轮「靠左成排、给左下角头像留位」用的；
+        第 14 轮用户改成「你放到文本框**底部中间**吧」，**居中本身就两侧都留白**，
+        不需要再拿一个令牌去推左边了。 */
+  --k-tile: 40px;
+  --box-h: 106px;          /* 文本框（常驻块）的高度 —— 兜底，JS 会按实际内容量到的高度改写 */
+  --box-min: 28px;         /* 模块折叠后只留的折条高度（箭头住在里面，≥24px 触达门槛） */
+  --ui-h: 94px;            /* 功能栏那一排（键 + 歌单 + 锁；JS 按实际量到高度改写）。
+                              ⚠️ 星时钟是**绝对定位的装饰件**，不在这条流里 —— 改它的大小不会动 --ui-h。 */
+  /* 歌单列表的**固定行数**与行高：列表永远 6 行高，不足的由 hud.js 补占位行。
+     ⚠️ 这两个值是**唯一事实来源** —— CSS 用它算列表高度，hud.js 读它决定补几个占位。 */
+  --pl-rows: 6;
+  --pl-row-h: 42px;        /* 与 `.pl__tcover` 34px + 上下 padding 4px 对齐（改一处要一起改） */
+  /* 星野配方：原样搬「.op__poster::before」（本文件 472-489）。三个消费者：
+     播放器面板 / 「.sky」/「.sky--tex」（后者只被「.hud__tex」用）。
+     ⚠️ **随主题翻**：浅色下是「浅底 + 墨蓝/暖金细点」，暗色下是「深蓝底 + 白星点」。
+        （第九轮我漏翻了这三个 —— 结果亮色主题下**歌单面板仍是一整块深蓝**，
+          正是用户那句「浅色模式下为什么还会有深蓝色呢？」所指。） */
+  --hud-stars:
+    radial-gradient(2.8px 2.8px at 16% 26%, rgba(34, 52, 110, .40), transparent 60%),
+    radial-gradient(2.2px 2.2px at 34% 14%, rgba(34, 52, 110, .32), transparent 60%),
+    radial-gradient(1.8px 1.8px at 58% 30%, rgba(176, 124, 24, .42), transparent 55%),
+    radial-gradient(2.4px 2.4px at 74% 18%, rgba(34, 52, 110, .36), transparent 60%),
+    radial-gradient(1.5px 1.5px at 88% 38%, rgba(90, 120, 200, .40), transparent 55%),
+    radial-gradient(1.7px 1.7px at 46% 52%, rgba(34, 52, 110, .28), transparent 55%);
+  --hud-cloud: radial-gradient(64% 58% at 78% 116%, rgba(207, 166, 74, .30), transparent 62%);
+  --hud-deep: linear-gradient(150deg, #ffffff 0%, #f4f7ff 52%, #eef2ff 100%);
+
+  --shadow-sm: 0 1px 2px rgba(42, 48, 96, .06);
+  --shadow: 0 4px 16px -4px rgba(42, 48, 96, .12);
+  --shadow-lg: 0 12px 32px -8px rgba(30, 63, 192, .18);
+  --glow: 0 0 0 1px rgba(86, 133, 255, .25), 0 6px 20px -6px rgba(86, 133, 255, .45);
+
+  --ease: cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ============ 夜间模式 · 深夜蓝 ============
+   只覆盖令牌、不动任何组件规则 —— 组件全部走令牌取色。
+   全站写死的白色只出现在「深色语境」（封面叠字 / OP 海报 / banner / 徽章 / tooltip），
+   那些不分主题，所以不需要令牌化。
+   暗色下的对比度已逐项复算，最低是 --ink-faint 的 5.56:1。 */
+[data-theme="dark"] {
+  --bg-a: #101d3a;  --bg-b: #1a1430;
+  --bg-c1: #0b1220; --bg-c2: #0d1526; --bg-c3: #0c1424;
+  --topbar-bg: rgba(11, 18, 32, .78);
+  --topbar-edge: rgba(143, 180, 255, .1);
+  --footer-bg: rgba(11, 18, 32, .8);
+
+  --surface: #141d33;
+  --c100: #16203a;  --c200: #1b2745;  --c300: #2b3a5e;  --c400: #2b3a5e;
+  --c500: #3a4d78;  --c600: #8fb4ff;  --c700: #6d99ff;  --c800: #2f5be0;
+  --line: var(--c300);
+  --line-soft: #24304d;
+
+  --ink: #e6ebf8;  --ink-deep: #ffffff;  --ink-soft: #9fb0d0;  --ink-faint: #8494b8;
+  --by: #b9c8ea;   --hot-link: #ffb066;
+  --link: #8fb4ff;
+
+  /* 暗色下页面底本来就深，裸底链接直接用 --link 就够（实测 9.47:1） */
+  --link-page: #8fb4ff;
+
+  --y100: #1a2036;  --y200: #1e2340;  --y300: #2a2b4a;
+  --y-ink: #e8d9a8; --y-text: #f0c85e;
+  --y-page: #f0c85e;          /* 暗色下页面底本来就深，金字直接可用 */
+
+  --hue-bg-s: 40%;  --hue-bg-l: 14%;
+  --hue-bd-s: 45%;  --hue-bd-l: 30%;
+  --hue-fg-s: 68%;  --hue-fg-l: 80%;
+  --av-bg-l: 22%;   --av-fg-l: 82%;
+
+  --deep-grad: linear-gradient(150deg, #3a63dd, var(--c800));   /* 白字压最浅一格 5.24:1 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .45);
+  --shadow: 0 4px 18px -4px rgba(0, 0, 0, .55);
+  --shadow-lg: 0 12px 36px -8px rgba(0, 0, 0, .65);
+  --glow: 0 0 0 1px rgba(143, 180, 255, .2), 0 6px 22px -6px rgba(109, 153, 255, .45);
+
+  /* — HUD：夜间模式把「亮度极性」翻回深底那一套（形状不变、母题不变、走带球面不变）—
+     ⚠️ 走带球面（`--hud-ball`）**故意不在这里翻**：它是「材料」不是「色」，
+        翻了走带钮在两种主题下就不是同一颗球了。（第 12 轮起功能键已不用它。） */
+  --hud-ink: #fdfeff;
+  --hud-ink-soft: rgba(207, 224, 255, .72);
+  --hud-gold-s: var(--y400);
+  --hud-gold-w: rgba(246, 216, 137, .45);
+  --hud-gold-tint: rgba(246, 216, 137, .18);
+  --hud-name-bg: linear-gradient(180deg, var(--y400) 6%, var(--y500) 62%, var(--y600) 100%);
+  --hud-ice-s: rgba(207, 224, 255, .8);
+  --hud-ice-w: rgba(207, 224, 255, .34);
+  --hud-plate: rgba(8, 15, 34, .55);
+  --hud-plate-hi: rgba(16, 28, 58, .82);
+  --hud-shadow: rgba(8, 15, 34, .5);
+  --hud-outline: var(--hud-void);
+  --hud-glow: rgba(246, 216, 137, .55);
+  --hud-tex-o: .5;  --hud-wm-o: .5;
+  --hud-wm-fill: #fff;
+  /* ⚠️ 第 12 轮把 74% 那一档从 **.34 提到 .46** —— 这是**修一个我这轮自己造出来的回归**：
+     功能栏搬进文本框 ⇒ 模块从 ~200px 涨到 ~230px（窄屏 203px）⇒ 台词的上沿在带子里
+     **往下挪了一档**，正好落进「**死区**」：那一带的合成色是中灰，
+     **白字压不住（≈4.4:1）**、**深描边也压不住（≈4.1:1）** —— 两条腿同时够不着 4.5。
+     抬到 .46 之后台词上沿落在 ≈0.62，白字就有 5.5:1 了。
+     ⚠️ **只动夜间的这一档**：亮色那条是用户第 8~10 轮来回调了两轮定的，一个色标没碰。
+     ⚠️ 形状没变（仍是一路变透、顶上全透明），`alphaAt(.74) = .46 < .5` 那条守卫依然过。 */
+  --hud-band: linear-gradient(to top,
+    rgba(8, 15, 34, .94) 0%, rgba(16, 28, 58, .78) 42%,
+    rgba(22, 38, 77, .46) 74%, transparent 100%);
+  /* 星野配方也要翻回来，否则亮色那套浅点会留在深底上（面板会发灰） */
+  --hud-stars:
+    radial-gradient(2.8px 2.8px at 16% 26%, #fff, transparent 60%),
+    radial-gradient(2.2px 2.2px at 34% 14%, #fff, transparent 60%),
+    radial-gradient(1.8px 1.8px at 58% 30%, #ffeed0, transparent 55%),
+    radial-gradient(2.4px 2.4px at 74% 18%, #fff, transparent 60%),
+    radial-gradient(1.5px 1.5px at 88% 38%, #dce8ff, transparent 55%),
+    radial-gradient(1.7px 1.7px at 46% 52%, #fff, transparent 55%);
+  --hud-cloud: radial-gradient(64% 58% at 78% 116%, rgba(246, 216, 137, .5), transparent 62%);
+  --hud-deep: linear-gradient(150deg, #1c2f6e 0%, #2a1d5c 52%, #10365c 100%);
+}
+
+/* ============ 基础 ============ */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink);
+  background: var(--page-bg);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+a { color: inherit; text-decoration: none; }
+h1, h2, h3, h4 { margin: 0; font-weight: 600; }
+ul { margin: 0; padding: 0; list-style: none; }
+img { max-width: 100%; display: block; }
+.i { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.sprite { display: none; }
+
+/* ⚠️ 这里是**加宽后**的口径：边距取 `--wrap-gutter`（104px），不是旧的 40px。
+   40px 只是「别贴边」，104px 是「给星空留一条带子」—— 后者才是这条留白一直以来的真实用途。
+   代价：1280 宽的老屏内容从 1240 掉到 1176（换来它本来没有的星空），≥1366 一律变大。 */
+.wrap { width: min(var(--wrap-w), 100% - var(--wrap-gutter)); margin-inline: auto; }
+
+/* ⚡ 容器查询上下文（加在页面内容根上，例如 `<main class="wrap cq">`）。
+   **为什么要有它**：站里的流体尺寸全写成 `clamp(16px, 1.5cqw, 20px)`，
+   而 `vw` 是**视口**的 1%、内容栏 `.wrap` 却**封顶 `--wrap-w`（1400）** ——
+   2560 的显示器上栏宽还是 1400，字却在继续涨。`vw` 不知道有 max-width，`cqw` 知道。
+   同一个数字换成 `cqw`：栏宽 ≥1400 时两者相等，再宽就不涨了。
+   ⚠️ **真正卡住「整体放大」的是 clamp 的第三个数（px 上限），不是系数**（第 33 轮实测）：
+      `clamp(16px, 1.5cqw, 20px)` 在栏 1240 下是 18.6px，栏一涨到 1400 本该到 21px，
+      却被 `20px` 当场截回。所以栏宽一改，**上限必须跟着抬**，否则 cqw 白改。
+   ⚠️ **别挂在含 `position: fixed` 后代的元素上**：`container-type` 会附带 `contain: layout`，
+      那会把 fixed 元素的包含块从视口改成这个元素。本站已核：`.lc` / `.hud` / `.fx`
+      都是 `document.body.appendChild` 的；`.toast` 在 index / board / auth 也在 body 级，
+      **只有 topic 页的还住在 main 里**，所以那一页把容器挂在 `.tp` 上。
+   ⚠️ 没有容器时 `cqw` 回落成视口 —— 等于今天的行为。所以这个开关**逐页可开**：
+      开了才有提升，漏开也不会坏。 */
+.cq { container-type: inline-size; }
+
+:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; border-radius: 4px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* 星空背景：只在正文两侧留白里画，画到卡片底下会像屏幕上的灰尘 */
+#sky {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  z-index: 0; pointer-events: none; opacity: .6;
+}
+.topbar, main, .footer { position: relative; z-index: 1; }
+
+/* ============ 天象层：夜间流星 / 日间云影 ============
+   夜间 = v3p 的流星原样搬来（一道暖白拖尾 + 头点，8% 的周期内走完全程，其余时间不出现）。
+   日间 = **云影掠过**：同一件事的反面 —— 夜里是「一道光划过」，白天是「一片暗掠过」。
+   两者都只在**有对比的背景上才读得出来**：流星在浅色卡片上等于看不见（白对白），
+   云影在深色上等于看不见 —— 这不是缺陷，是它俩各自属于白天/黑夜的原因。
+   ⚠️ 住在 z-index:2：内容（z1）之上、顶栏（z50）与 HUD（z100）之下 —— 流星是「天上的事」，
+      它会从卡片上划过，就像隔着窗看天；指针事件一律关掉。
+   ⚠️ 用户 2026-11-06：「夜间要有流星；日间看看换成什么比较好」→ 云影是选出来的日间对应物。 */
+.skyfx { position: fixed; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+
+.shoot { position: absolute; top: var(--y); left: var(--x); width: 180px; height: 2px;
+  opacity: 0; border-radius: 2px; transform-origin: 100% 50%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 246, 220, .95));
+  animation: shoot var(--dur, 13s) linear infinite; animation-delay: var(--del, 0s); }
+.shoot::after { content: ""; position: absolute; right: -3px; top: -3px; width: 8px; height: 8px;
+  border-radius: 50%; background: radial-gradient(circle, #fff, rgba(255, 236, 190, 0) 70%); }
+@keyframes shoot {
+  0%   { opacity: 0; transform: rotate(var(--a, 32deg)) translateX(-200px); }
+  1%   { opacity: 1; }
+  8%   { opacity: 0; transform: rotate(var(--a, 32deg)) translateX(560px); }
+  100% { opacity: 0; transform: rotate(var(--a, 32deg)) translateX(560px); }
+}
+
+/* 日间：**同一个动作，换一种光** —— 一道金色的反光掠过（不是常驻的弧）。
+   用户 2026-11-06：「日间版这个太丑了，不要，我要像流星这种短暂的，不要常驻的。」
+   ⇒ 日间不再有自己的形状，而是**复用流星的时机**（8% 的周期里走完，其余时间不出现），
+      只把颜色从夜里的暖白换成站点的金 —— 金在浅底上有对比，白没有。
+   日晕弧（70s、45s 都挂在那儿）就是被这句话否掉的：那一版是「常驻」，这一版是「一闪」。 */
+.shoot { background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(196, 154, 52, .92)); }
+.shoot::after { background: radial-gradient(circle, rgba(214, 176, 92, .95), rgba(214, 176, 92, 0) 70%); }
+[data-theme="dark"] .shoot { background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 246, 220, .95)); }
+[data-theme="dark"] .shoot::after { background: radial-gradient(circle, #fff, rgba(255, 236, 190, 0) 70%); }
+
+/* 流星两种主题都出：夜里是暖白、日里是金 —— 变的是光，不是「有没有」 */
+@media (prefers-reduced-motion: reduce) { .skyfx { display: none; } }
+
+/* ============ 背景轮播（全页氛围层）============
+   7 张 CG 铺满视口，42s 一轮（每张 6s，含 1.5s 交叉淡入淡出），同时缓慢推近。
+   它**不是**在展示照片 —— 上面盖着 .bg__wash，洗色层用的就是 body 那份 --page-bg
+   配方（不透明度 --bg-veil），所以最终读到的是「页面本身的颜色 + 一点点照片」。
+   这样做换来两件事：暗色主题零改动自动跟随（配方里的令牌自己会翻），
+   以及正文对比度只被轻微影响，而不是听天由命。
+
+   分层：.bg 与 #sky 同为 z-index:0，靠**文档顺序**决定先后 —— .bg 写在 #sky 之前，
+   于是照片在下、星空在上、内容（z-index:1）在最上。主题切换的 .fx 幕布是 z-index:200，
+   仍然盖得住这一层，所以「暮色幕」不用改。 */
+.bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.bg__l {
+  position: absolute; inset: 0;
+  background-size: cover; background-repeat: no-repeat;
+  /* 42% 而不是 50%：7 张里有 3 张是 4:3，宽屏下 cover 会上下裁得很狠，
+     焦点稍微上移，人物与天空更容易留在可见区里。 */
+  background-position: 50% 42%;
+  opacity: 0;
+  animation: bgSlide 42s linear infinite;
+  animation-delay: calc(var(--i) * 6s);
+}
+.bg__l:nth-child(1) { background-image: url("bgs/bg-1.avif"); }
+.bg__l:nth-child(2) { background-image: url("bgs/bg-2.avif"); }
+.bg__l:nth-child(3) { background-image: url("bgs/bg-3.avif"); }
+.bg__l:nth-child(4) { background-image: url("bgs/bg-4.avif"); }
+.bg__l:nth-child(5) { background-image: url("bgs/bg-5.avif"); }
+.bg__l:nth-child(6) { background-image: url("bgs/bg-6.avif"); }
+.bg__l:nth-child(7) { background-image: url("bgs/bg-7.avif"); }
+/* 洗色层：同一份页面配方压住照片。--bg-veil 越大照片越淡。
+   缩放从 1.04 起，四边各有 2% 余量，所以推到 1.22 也不会露边。 */
+.bg__wash { position: absolute; inset: 0; background: var(--page-bg); opacity: var(--bg-veil);
+            /* 「看背景」模式要把洗色层撤掉，加个过渡免得硬闪 */
+            transition: opacity .4s var(--ease); }
+@keyframes bgSlide {
+  0%      { opacity: 0; transform: scale(1.04); }
+  3.6%    { opacity: 1; }
+  10.7%   { opacity: 1; }
+  14.286% { opacity: 0; }
+  100%    { opacity: 0; transform: scale(1.22); }
+}
+
+/* ============ 顶栏（玻璃质感）============ */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--topbar-bg);
+  backdrop-filter: saturate(170%) blur(14px);
+  -webkit-backdrop-filter: saturate(170%) blur(14px);
+  border-bottom: 2px solid var(--c400);
+  box-shadow: 0 1px 0 var(--topbar-edge) inset, var(--shadow-sm);
+}
+.topbar__inner { display: flex; align-items: center; gap: 20px; height: 62px; }
+
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand__mark {
+  display: grid; place-items: center;
+  width: 34px; height: 34px; border-radius: 10px;
+  color: #fff; font-size: 19px;
+  background: linear-gradient(150deg, var(--c600), var(--c800));
+  box-shadow: var(--glow);
+}
+.brand__text { display: flex; flex-direction: column; line-height: 1.05; }
+.brand__text strong { font-family: var(--font-display); font-size: 19px; letter-spacing: .06em; color: var(--ink-deep); }
+.brand__text em { font-style: normal; font-size: 10px; letter-spacing: .3em; color: var(--ink-faint); }
+
+.nav { display: flex; gap: 2px; margin-left: 4px; }
+.nav a {
+  padding: 7px 13px; border-radius: var(--r-pill);
+  font-size: 14px; color: var(--ink-soft);
+  transition: color .18s var(--ease), background .18s var(--ease);
+}
+.nav a:hover { color: var(--link); background: var(--c200); }
+.nav a[aria-current="page"] { color: var(--link); font-weight: 500; background: var(--c200); }
+
+.tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.search {
+  display: flex; align-items: center; gap: 7px;
+  padding: 0 12px; height: 36px; width: 228px;
+  border: 1.5px solid var(--line); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink-soft);
+  transition: border-color .18s var(--ease), box-shadow .18s var(--ease);
+}
+.search:focus-within { border-color: var(--c700); box-shadow: 0 0 0 3px rgba(74, 114, 232, .14); }
+.search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); }
+.search input::placeholder { color: var(--ink-faint); }
+
+.btn {
+  display: inline-flex; align-items: center; height: 36px; padding: 0 14px;
+  border-radius: var(--r-pill); font-size: 14px; font-weight: 500;
+  background-repeat: no-repeat; background-size: 100% 100%;
+  transition: transform .15s var(--ease), box-shadow .18s var(--ease), background-color .18s var(--ease);
+}
+.btn--ghost { color: var(--link); border: 1.5px solid var(--c500); background-color: var(--surface); }
+.btn--ghost:hover { background-color: var(--c200); border-color: var(--c700); }
+.btn--solid { color: #fff; box-shadow: var(--glow); }
+.btn--solid:hover { transform: translateY(-1px); box-shadow: 0 8px 22px -6px rgba(30, 63, 192, .5); }
+
+/* ── 按钮里的星座（§45.7）──
+   不用 DOM 子元素，也不走 CSS 变量：starbtn.js 直接把 SVG data URI 写进按钮的
+   `style.background-image`（主键再叠一层深蓝渐变），指针事件切换 1/2/全部 三种图。
+   为什么这么绕：
+     ① 本机 Chrome 156 会把 `.btn` 里绝对定位的子元素画到页面原点（布局正确、绘制错位）；
+     ② 经由 `var(--bs-1)` 解析出来的背景图在首次绘制后不刷新（computed 对、画不出来），
+        只有内联样式（或 !important 强制重算）才真的重画。
+   背景层由元素自己绘制，没有这两个问题。 */
+.btn--solid { background: var(--deep-grad); }
+/* `background` 简写会把 size/repeat 重置回 auto/repeat —— 在它之后用同等特异度再钉一次 */
+.btn.btn--ghost, .btn.btn--solid { background-size: 100% 100%; background-repeat: no-repeat; }
+
+/* 首字色块头像：同色相浅底 + 深字，与色相无关恒能过 4.5:1（与首页 .op__av 同一手法）。
+   ⚠️ 第 18 轮**从 forum.css 挪到这里**（声明逐字未动，只换了位置）：
+   顶栏的登录态（session.js）也要用它，而 index.html 并不加载 forum.css ——
+   放在本文件才真的是「三页都有」。 */
+.av {
+  flex: none; display: grid; place-items: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  font-size: 12px; font-weight: 700; line-height: 1;
+  background: hsl(var(--ah, 220) 62% var(--av-bg-l));
+  color: hsl(var(--ah, 220) 55% var(--av-fg-l));
+  box-shadow: 0 0 0 2px hsl(var(--hue, 218) 68% 62% / .45);
+}
+.av--sm { width: 22px; height: 22px; }
+
+/* ---- 登录态：顶栏右侧由 session.js 换上来的那块 ----
+   未登录时它只包着原来那两枚「登录 / 注册」按钮；已登录时换成头像 + 星名 + 退出。 */
+.tools__auth { display: inline-flex; align-items: center; gap: 8px; }
+.who__me {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 36px; padding: 0 13px 0 5px;
+  border: 1.5px solid var(--c500); border-radius: var(--r-pill);
+  background: var(--surface);
+}
+.who__me b {
+  font-family: var(--font-round); font-size: 13.5px; font-weight: 500; color: var(--ink-deep);
+  max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.who__out {
+  padding: 0 13px; border: 1.5px solid var(--c500); background: var(--surface);
+  color: var(--ink-soft); cursor: pointer; font: inherit; font-size: 13px;
+}
+.who__out:hover { background: var(--c200); color: var(--link); border-color: var(--c700); }
+.who__set {
+  display: inline-flex; align-items: center; height: 36px; padding: 0 13px;
+  border: 1.5px solid var(--c500); border-radius: var(--r-pill); background: var(--surface);
+  color: var(--ink-soft); font-size: 13px;
+}
+.who__set:hover { background: var(--c200); color: var(--link); border-color: var(--c700); }
+.who__set:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; }
+
+/* ============ 首屏 Bento ============
+   12 栏网格。行序：公告(12) / OP(8) + 最近更新(4) / 推送(12) / 热门 TAG(12) / 星等图例(12)。
+   统计卡那一行已经搬去页脚（见 .tally）。 */
+.hero {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+}
+.hero__ann {
+  grid-column: span 12;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 12px 18px;
+  border: 1.5px solid var(--y600); border-left: 4px solid var(--y500);
+  border-radius: var(--r-lg);
+  background: linear-gradient(105deg, var(--y200), var(--y100) 62%, var(--surface));
+  box-shadow: var(--shadow-sm);
+}
+.hero__eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; color: var(--y-ink); }
+.hero__annTitle { flex: 1; min-width: 14ch; margin: 0; font-family: var(--font-display); font-size: clamp(15px, 1.35cqw, 20px); line-height: 1.4; color: var(--ink-deep); }
+.hero__ann .more { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--link); }
+.hero__ann .more:hover { text-decoration: underline; }
+.pill {
+  padding: 2px 9px; border-radius: var(--r-pill);
+  font-size: 12px; font-weight: 500; color: #fff;
+  background: var(--deep-grad);
+}
+
+/* ============ 热门 TAG · 流星带 ============
+   八轮返工之后定下来的做法。前七轮全被否：胶囊（太同质化）→ 标签星（为什么只想到星星）
+   → 分光光谱（不直观、为了主题而符合主题）→ 目镜/榜单/星座（全否）→ 文字云
+   （否在「字号就是热度」这类把数值塞进文字尺寸的做法上）。
+   第八轮用户自己给了母题，最后选中流星；落地的机制是 **长度（横向）+ 顺序**：
+   24 颗流星排成一条水平线、亮头齐平，尾巴长度 = 热度，名次 1 在最左。
+
+   搬运时改的几处，都是为了贴这个站：
+     ① 头部不自己画，直接用 .panel__head / .panel__title / .panel__line（站里现成的）
+     ② 色相一律走派生令牌：压夜底用 --sky-fg-*，压浅底用 --hue-fg-*。
+        绝不用固定的 hsl(H 78% 54%) —— 后者在亮色主题下黄色系对白底只有 1.35:1（见 memories 2.39）
+     ③ 尾巴长度由 magnitudeGlow() 连续算（归一化 0.97→0.17），不是硬编码几档
+     ④ 底板走 --sky-*：暗色主题下退化成卡面本色，看不出另有一块板 */
+.hero__tags {
+  grid-column: span 12;                         /* 在首屏 12 栏网格里的落位 */
+  /* 卡壳保留，理由不是好看：去掉它，色相标签名就落在**带照片洗色的页面底**上，
+     最不利的黄色系在那儿只剩约 3.7:1（低于正文 4.5:1）。压回卡底就回到站里
+     已验证过的那一档（色相字压 --surface/--c100）。顺带也与首屏其它卡片一致。 */
+  padding: 10px 16px 12px;
+  border: 1.5px solid var(--line-soft); border-radius: var(--r);
+  background: linear-gradient(160deg, var(--surface), var(--c100));
+  box-shadow: var(--shadow-sm);
+}
+/* ---- 热门 TAG · 流星带 ----
+   第八轮落地的一版。机制是 **长度（横向）+ 顺序**，不是把数值塞进文字尺寸：
+   24 颗流星排在同一条水平线上、亮头齐平，**尾巴越长越热**；名次 1 在最左边，
+   所以它同时是一块排行榜。入场是一次性的 —— 亮头从左上斜射进来、尾巴自头部往后
+   展开，播完即停（不做无限循环：极短时长 + infinite 就是频闪）。
+   ⚠️ 尾巴长度走 magnitudeGlow()，是**归一化**的（峰值 0.97 → 谷底 0.17，约 5.7 倍）。
+      真实帖数比 64→39 画出来几乎一样长，差异会被抹平，这条必须在页面上写明。
+   ⚠️ **两色，不是 24 色**：颜色不承担任何数据（尾巴长度已经在表达热度），24 个色相
+      纯属装饰、而且容易审美疲劳。统一走站里的蓝，只有第 1 名换站里的金色 ——
+      星等与面板标题用的都是这枚金色，所以「第一名是金色的」不需要读者学新规则。
+      `--mc` 一个变量同时喂尾巴 / 亮头 / 名字，三处不可能走散。
+   ⚠️ **不铺底色**：这一版早先自带一块深色夜空天幕（--sky-*），在日间模式下成了全页
+      唯一的深色块，用户否掉了。标记改走压卡底的那一档令牌（--hue-fg-* / --y-text），
+      落在 .hero__tags 本就有的卡面上 —— 这一档是站里验证过对比度的。 */
+/* ⚠️ 格子宽度 = **内容驱动，不伸不缩**：`flex: 0 0 auto` + 加大格距。
+   这一版之前走过两步弯路，都记在这儿（词表里现在真的有 3/4 字词，不是只在测试里）：
+     ① `flex: 1 1 0`（24 格等分）—— 隐含前提是「每个标签都两字」。实测：
+        3 字 ⇒ 1400 下 15 处重叠；4 字 ⇒ 23 处重叠 + 溢出卡面 7.5px。
+        它连**两字数据**都保证不了：视口 ~905–1070px 之间格子被压到 39px 以下，
+        而最热那条尾巴是 41px（右对齐、向左伸）⇒ 尾巴插进左边那格的亮头（@1000 净空 −3.0）。
+     ② `flex: 1 1 auto` + `min-width: 40px` —— 重叠修好了，但 `flex-grow: 1` 另有毛病：
+        换行后**最后一行被拉伸铺满**。实测 4 字混排折成 19+5，那 5 个被拉散到整幅宽；
+        3 字折成 23+1，那 1 个被拉到 1206px 宽的格子里。用户看图说「处理得不好」。
+   现在这版 `flex: 0 0 auto` ⇒ 格子**就是内容的宽度**（= max(尾巴, 名字)），不长胖也不挨饿：
+     ① 尾巴**永远在自己的格子里**（格子宽 ≥ 尾巴是定义决定的），所以
+        **任何格距下都不可能重叠** —— 前面两版要费劲论证的几何约束，这里自动成立，
+        `min-width` 那个硬下限也就不需要了
+     ② 换行时最后一行**自然聚拢**，不再被拉散
+     ③ 格距从 `2px` 提到 `8px 7px`：2px 是等分时代的值 —— 那时格子窄、2px 够用；
+        词表混入 3/4 字后名字宽到 50~63px，2px 会让相邻名字糊成一片
+   代价：一行不再**精确**铺满卡面（1400 下 2 字数据约余 40px，右端略空）。
+   换来的是「长短混排不撞、折行不散」，而读法（尾巴越长越热）一点没动。
+
+   ⚠️ 对齐是**居中**（`align-items: center`），不是右对齐。
+      原来写的是右对齐（`flex-end`），那个理由在**等分格子时代**是成立的：
+      24 格等宽 + 亮头都在各自格子的右缘 ⇒ 亮头间距 = 格宽 + 格距 = **常数**，
+      24 个点亮成一把**等距的尺子**。那时若改成居中，间距会变成
+      「格宽 + 格距 + (w₁ − w₂)/2」，**反而不等距** —— 所以那会儿右对齐是对的。
+      ⚠️ 但换成 `flex: 0 0 auto`（格子不再等宽）之后，这条理由**就失效了**：
+      右对齐的亮头间距变成「格距 + 下一个格子的宽度」，跟着名字长短走。
+      实测（`_align.js`，**按行**算，1400 / 1200 / 1000 三档一致）：
+        右对齐 CV **19.3%**（39.8~69.7px）
+        居中   CV **13.4%**（39.8~63.2px）
+      ⇒ 居中反而更均匀，所以换成居中 —— 用户问「为什么右对齐」，一查才发现理由已倒。
+      同理「名字右缘落在亮头正下方」也不构成理由：那个锚在**右缘、不在中心**，
+      亮头到名字中心的偏移照样随名字长短在 12.9~27.8px 之间变。
+      代价：一行里长名字会把**两端都顶出毛边**（右对齐时至少右端是齐的）。
+      （还有个更彻底的做法：让亮头正好落在名字**中心**上方 —— 但那在
+      「尾巴比名字宽」的格子上会把尾巴**伸出格子左边**压到前一格，不能做。）
+
+   ⚠️ 列距为什么是 7px 而不是更大：这是**算出来的，不是挑出来的**（`_gap.js` 试排）。
+      24 个词的内容宽度合计约 **1041px**，而卡面可用宽只有 **1206px**（`.wrap` 有 max-width，
+      1300 与 1400 的可用宽是**同一个数**）—— 留给 23 个列距的只有 165px。
+      试排结果：列距 ≤7 才能收成一行（7px 用掉 1202.3，余 3.7px；8px 就变成 [23,1] 孤行）。
+      所以「一行」只在视口 ≥约 1295 时成立；1200~1290 是 [22,2]、1100 是 [20,4]、
+      1000 是 [18,6] —— 都还算均衡，没有只剩 1 个的孤行。
+      ⚠️ 另一个能换 260px 的杠杆是**藏掉名次数字**（24 × 约 11px）：藏掉后列距 8px
+      也能一行，且一行能维持到视口约 1190。**没有采用** —— 名次数字是这块排行榜
+      把「第几热」说成确数的唯一地方（`title` 里只有帖数与星等，没有名次），
+      而且用户刚要求把字放大，不该转头去缩别的字。这条留作将来再谈的选项。 */
+.shower { position: relative; padding: 9px 0 1px; }
+.shower__row { display: flex; flex-wrap: wrap; gap: 8px 7px; }
+.shower__m { flex: 0 0 auto; display: flex; flex-direction: column;
+             align-items: center; gap: 3px;
+             --mc: hsl(218 var(--hue-fg-s) var(--hue-fg-l));
+             padding: 0; border: 0; background: none; cursor: pointer; font: inherit;
+             transition: transform .18s var(--ease); }
+/* 第 1 名换金。用 --y-ink 而不是 --y-text：--y-ink 才是站里「压浅色面」的金
+   （星等徽章上的数字就是它），在这张卡上实测 8.01:1；--y-text 只有 4.80:1，
+   虽然过 4.5 但余量太薄 —— 这个项目为同样的理由抬过一次 --ink-faint。 */
+.shower__m--top { --mc: var(--y-ink); }
+.shower__m:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; border-radius: 3px; }
+.shower__m:active { transform: scale(0.95); }
+.shower__m:hover .shower__nm { text-decoration: underline; text-underline-offset: 3px; }
+.shower__m:hover .shower__head { transform: scale(1.6); }
+
+@media (prefers-reduced-motion: reduce) {
+  .shower__m { transition: none; }
+  .shower__m:active { transform: none; }
+}
+.shower__streak { position: relative; display: block; height: 8px; width: var(--w);
+                  animation: showerFly .62s var(--ease) both;
+                  animation-delay: calc(var(--i) * 30ms); }
+/* 尾巴：2px 细线（不是填满 8px 的色块 —— 那样是个方块，不是流星）。
+   渐变前 58% 保持不透明、最后 42% 才收尾：一路线性淡出会把「可见长度」削掉大半，
+   长短差异就看不出来了。 */
+.shower__tail { position: absolute; left: 0; right: 0; top: 50%; display: block;
+                height: 2px; margin-top: -1px; border-radius: 1px;
+                transform-origin: 100% 50%;
+                background: linear-gradient(270deg, var(--mc) 0%, var(--mc) 58%, transparent 100%);
+                animation: showerTail .62s var(--ease) both;
+                animation-delay: calc(var(--i) * 30ms); }
+/* 亮头单独一个元素：它不能跟着尾巴一起做 scaleX，否则会被压扁成一个点 */
+.shower__head { position: absolute; right: 0; top: 50%; display: block;
+                width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%;
+                background: var(--mc); }
+/* 名字 10px → 12px。10px 的中文在屏幕上偏小（这个站标签全是两字词，屏幕字重又轻），
+   而 12px 正是站里 tag 胶囊 .tag 的字号 —— 顺手把「tag 文字」统一成一号。
+   档位不是拍的：探针 (_tagf.js) 把 10/11/12/13 四档在 1400 与 375 两处各排一遍，
+   查相邻名字是否重叠、是否溢出卡面。两处都不撞车（1400 一格 48.3px，13px 名宽才 34.5px），
+   所以瓶颈不在宽度而在够不够大 —— 取 12 是因为它与 .tag 一致，13 反而会让首页名字
+   比别处的标签还大，反而不一致。
+   代价：页面高 1400 下 +2px、375 下 +10px（窄屏五行各长 2px）。 */
+.shower__nm { font-size: 12px; line-height: 1; white-space: nowrap; color: var(--mc); }
+/* 名次数字用中性的 --ink-faint（卡底 5.50:1），**不跟着 --mc 走** ——
+   金色再压一层透明度的话，在卡底上只剩 2.95:1，过不了小字要求的 4.5:1。
+   字号跟名字按 0.875 同步（10→12 变 9→10.5），否则名次会显得比名字还旧。 */
+.shower__nm b { margin-right: 3px; font-family: var(--font-mono); font-size: 10.5px;
+                font-weight: 400; color: var(--ink-faint); }
+.shower__m:hover .shower__nm { text-decoration: underline; text-underline-offset: 3px; }
+.shower__m:hover .shower__head { transform: scale(1.6); }
+.shower__meta { flex: none; font-size: 11.5px; color: var(--ink-faint); }
+.shower__meta b { color: var(--ink-soft); font-weight: 600; }
+
+/* ⚠️ 起始态写在 @keyframes from 里，**不要在基规则里给 .shower__streak 加 transform** ——
+   那样 prefers-reduced-motion 下 animation:none 会落在起始态（整排消失），而不是终态。 */
+@keyframes showerFly  { from { transform: translate(-12px, -7px); opacity: 0; } }
+@keyframes showerTail { from { transform: scaleX(0); } }
+
+/* ---- 推送条：三条推送一次看全 ---- */
+.ban {
+  grid-column: span 12;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
+}
+.ban__item {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: flex-end; gap: 4px;
+  min-height: 116px; padding: 15px 17px;
+  border: 1.5px solid var(--c400); border-radius: var(--r);
+  color: #fff; box-shadow: var(--shadow-sm);
+  transition: transform .18s var(--ease), box-shadow .2s var(--ease);
+}
+.ban__item:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.ban__item::before { /* 程序化星野，替代图片素材 */
+  content: ""; position: absolute; inset: 0;
+  background:
+    radial-gradient(2.2px 2.2px at 19% 24%, #fff, transparent 60%),
+    radial-gradient(1.8px 1.8px at 63% 15%, #fff, transparent 60%),
+    radial-gradient(1.4px 1.4px at 12% 62%, #fff, transparent 55%),
+    radial-gradient(1.6px 1.6px at 84% 34%, #dce8ff, transparent 55%),
+    radial-gradient(1.2px 1.2px at 44% 76%, #fff, transparent 55%),
+    radial-gradient(72% 92% at 88% 118%, rgba(246, 216, 137, .42), transparent 62%),
+    linear-gradient(150deg, hsl(var(--bh, 218) 60% 32%), hsl(calc(var(--bh, 218) + 40) 56% 17%));
+}
+.ban__item > * { position: relative; }
+.ban__sub { font-family: var(--font-mono); font-size: 12px; letter-spacing: .16em; color: var(--y400); }
+.ban__title {
+  font-family: var(--font-display); font-size: 16px; font-weight: 700; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ban__desc { font-size: 12px; color: #cdd9ff; }
+
+/* ---- OP board：开场动画 + 最近更新（照 GALBase 的结构）---- */
+.op {
+  /* 占几栏 = 视频的实际宽度。opening.mp4 是 1280×720，**比例必须锁死在 16:9** ——
+     缩这个区块只能缩宽度，不能改 aspect-ratio（改成 21:9 是把画面压扁，不是缩小）。
+     span 8→6：宽 821→612px，16:9 下高 462→344px。 */
+  grid-column: span 6;
+  position: relative; overflow: hidden; aspect-ratio: 16 / 9;
+  border: 2px solid var(--c400); border-radius: var(--r-lg); box-shadow: var(--shadow);
+  background: linear-gradient(135deg, #1b2a6b, #2c1d5e 50%, #123a63);
+}
+.op__video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.op__poster {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px; padding: 20px;
+  text-align: center; color: #fff; transition: opacity .45s var(--ease);
+}
+.op__poster::before { /* 无视频文件时的程序化首帧 */
+  content: ""; position: absolute; inset: 0;
+  background:
+    radial-gradient(2.8px 2.8px at 16% 26%, #fff, transparent 60%),
+    radial-gradient(2.2px 2.2px at 34% 14%, #fff, transparent 60%),
+    radial-gradient(1.8px 1.8px at 58% 30%, #ffeed0, transparent 55%),
+    radial-gradient(2.4px 2.4px at 74% 18%, #fff, transparent 60%),
+    radial-gradient(1.5px 1.5px at 88% 38%, #dce8ff, transparent 55%),
+    radial-gradient(1.7px 1.7px at 46% 52%, #fff, transparent 55%),
+    radial-gradient(64% 58% at 78% 116%, rgba(246, 216, 137, .5), transparent 62%),
+    linear-gradient(150deg, #1c2f6e 0%, #2a1d5c 52%, #10365c 100%);
+}
+.op__poster > * { position: relative; }
+.op.is-ready .op__poster { opacity: 0; pointer-events: none; }
+.op__play {
+  display: grid; place-items: center; width: 60px; height: 60px; padding: 0;
+  border: 2px solid rgba(255, 255, 255, .7); border-radius: 50%;
+  background: rgba(255, 255, 255, .14); color: #fff; cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: transform .18s var(--ease), background .18s var(--ease);
+}
+.op__play svg { width: 26px; height: 26px; fill: currentColor; margin-left: 3px; }
+.op__play:hover { transform: scale(1.07); background: rgba(255, 255, 255, .26); }
+.op__name {
+  margin: 0; font-family: var(--font-display); font-weight: 700; letter-spacing: .16em;
+  font-size: clamp(16px, 1.5cqw, 22px); text-shadow: 0 0 20px rgba(140, 180, 255, .5);
+}
+.op__hint { margin: 0; font-size: 12px; color: rgba(255, 255, 255, .7); }
+.op__hint code { font-family: var(--font-mono); color: var(--y400); }
+.op.is-nudged .op__hint,
+.op.is-missing .op__hint { color: var(--y400); }
+
+.op__recent {
+  /* span 4→6：OP 让出两栏之后，「最近更新」有 612px 可用 —— 正好排成双列，
+     6 条一条不删，却只占 3 行。整行高度因此由 OP 的 344px 决定，不再是 462。 */
+  grid-column: span 6;
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 15px 13px;
+  border: 1.5px solid var(--line-soft); border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--surface), var(--c100)); box-shadow: var(--shadow-sm);
+}
+.op__recentCap {
+  display: inline-flex; align-items: center; gap: 6px; margin: 0;
+  font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--ink-deep);
+}
+.op__recentCap .i { width: 14px; height: 14px; color: var(--c700); }
+/* 双列。原来用 flex + justify-content:space-around 把 6 条摊满整栏高度 ——
+   那是「栏高由 OP 决定」时的补白手法；现在栏高由内容决定，改回正常排布。 */
+/* 一行一个，并且**用 1fr 让 6 行摊满整栏高度**：这一栏的高度是被左边 OP 的 16:9
+   撑出来的，内容天然比它矮。用 flex:1 + grid-auto-rows:1fr 让行去填，底下就不会再
+   留一块空 —— 双列那版实测底下空了 171px，一眼就看得出来。
+   ⚠️ 不能用 space-around 那种「把内容摊开」的写法：行与行之间会被拉开，反而更空。 */
+.op__list {
+  flex: 1;
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: 1fr; margin: 0; padding: 0; list-style: none;
+}
+/* 行距 7→4、头像 28→30：这一栏的高度是被左边 OP 的 16:9 撑出来的（344px），
+   改成一行一个之后 6 行要正好落在这个高度里 —— 7px 行距时实测 409px，反而把整行顶高 65px。
+   现在 6 行内容约 294px + 头部与内边距约 50px ≈ 344px，余下的零头由 grid-auto-rows:1fr 摊掉。 */
+.op__row { display: flex; align-items: center; gap: 10px; padding: 2px 0; }
+/* 首字色块头像：同色相浅底 + 深字，与色相无关恒能过 4.5:1
+   （白字压饱和色在黄色系上只有 1.9:1）。外环用板块色，一个元素同时表达
+   「谁发的」和「哪个板块」，省掉了一个独立的小圆点。 */
+.op__av {
+  flex: none; display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  font-size: 13px; font-weight: 700; line-height: 1;
+  background: hsl(var(--ah, 220) 62% var(--av-bg-l));
+  color: hsl(var(--ah, 220) 55% var(--av-fg-l));
+  box-shadow: 0 0 0 2px hsl(var(--bh, 218) 68% 62% / .45);
+}
+.op__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.op__t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--ink); }
+.op__row:hover .op__t { color: var(--link); }
+.op__m { font-size: 12px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+
+/* ============ 大板块 ============ */
+.boards { margin-top: 26px; display: flex; flex-direction: column; gap: 20px; }
+
+.bv { position: relative; }
+.bv__head {
+  position: relative;
+  display: flex; align-items: flex-end; gap: 14px 22px; flex-wrap: wrap;
+  padding-bottom: 14px; margin-bottom: 16px;
+  border-bottom: 2px solid var(--c400);
+}
+.bv__head::after { /* 板块色的短下划线，给标题区一点重量 */
+  content: ""; position: absolute; left: 0; bottom: -2px;
+  width: 96px; height: 2px;
+  background: linear-gradient(90deg, hsl(var(--hue, 218) 70% 52%), hsl(var(--hue, 218) 70% 52% / 0));
+}
+/* 格子条和编号、副标题同处一行 —— 不单独占一整行。
+   早先把它顶成独立一条（flex-basis:100%），头部就成了「格子条 / 编号+副标题」两段叠着，
+   读起来是断的；放进同一行后它就是这一行的标题，视觉上属于板块本身。
+   走 baseline 对齐：格子条是 inline-flex，基线取的是它第一个 flex 项（望远镜那枚 svg）的底边。 */
+.bv__lead { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.bv__idx {
+  font-family: var(--font-mono); font-size: 13px; letter-spacing: .1em;
+  color: hsl(var(--hue, 218) var(--hue-fg-s) var(--hue-fg-l));
+  padding: 2px 9px; border-radius: var(--r-sm);
+  border: 1.5px solid hsl(var(--hue, 218) var(--hue-bd-s) var(--hue-bd-l));
+  background: hsl(var(--hue, 218) var(--hue-bg-s) var(--hue-bg-l));
+}
+/* ⚠️ 下面三处是**裸在页面底上**的（没有自己的底），所以用 --ink 而不是 --ink-soft：
+   --bg-veil 压到 0.75 之后，照片透出量翻倍，--ink-soft 在照片纯黑像素上只剩 3.69:1。 */
+.bv__sub { font-size: 13px; color: var(--ink); letter-spacing: .05em; }
+.bv__quote {
+  margin: 0 0 2px auto; padding-right: 14px; max-width: 46ch; text-align: right;
+  border-right: 3px solid var(--y500);
+  font-family: var(--font-display); font-style: italic;
+  font-size: 14px; color: var(--ink);
+}
+.bv__quote .i { width: 12px; height: 12px; color: var(--y-text); fill: var(--y600); stroke: none; margin-right: 6px; vertical-align: -1px; }
+
+/* ---- 子板块 bento：4 栏 × 3 行，第一张跨 2 列 2 行，第四张横跨整行 ---- */
+.bv__grid {
+  position: relative;            /* 轨道的绝对定位基准 */
+  margin-top: 48px;              /* 给轨道让出空间 */
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;
+}
+
+.sc {
+  position: relative; overflow: hidden; min-width: 0;
+  display: flex; flex-direction: column;
+  padding: 11px 15px 12px;          /* 上下 15/16 → 11/12：卡片纵向留白是重复度最高的高度 */
+  border: 1.5px solid var(--line-soft); border-radius: var(--r);
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  transition: transform .18s var(--ease), box-shadow .22s var(--ease), border-color .22s var(--ease);
+}
+.sc:hover { transform: translateY(-2px); border-color: var(--c600); box-shadow: var(--glow); }
+.sc::before { /* 左上角的板块色竖条 */
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(hsl(var(--hue, 218) 72% 64%), hsl(var(--hue, 218) 62% 46%));
+}
+.sc__glow { /* 卡片内右上角的星云光晕（收在卡片内，不外溢）*/
+  position: absolute; top: -70px; right: 0; width: 190px; height: 190px;
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, hsl(var(--hue, 218) 82% 78% / .3), transparent 68%);
+}
+
+.sc--big { grid-column: span 2; grid-row: span 2; padding: 13px 17px 15px; }
+.sc--big .sc__glow { top: -90px; right: 0; width: 280px; height: 280px; }
+/* 大卡右侧的两张卡各跨 2 列 —— 2×2 的大卡配两个 2×1，网格刚好填满，不留空洞 */
+.sc--mid { grid-column: span 2; }
+
+.sc__head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; position: relative; }
+.sc__name { font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: .03em; color: var(--ink-deep); white-space: nowrap; }
+.sc--big .sc__name { font-size: clamp(18px, 1.7cqw, 25px); }
+.sc__sub { font-size: 12px; color: var(--ink-soft); white-space: nowrap; }
+
+/* 星等（创新）：天文学里星等越小越亮。--glowAmt 越大 → 填充越饱和、辉光越强、星形越大 */
+.mag {
+  margin-left: auto; flex: none;
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft);
+}
+.mag b { font-size: 13px; font-weight: 700; color: var(--y-ink); }
+.mag .i {
+  width: 13px; height: 13px; stroke: none;
+  fill: hsl(44 92% calc(72% - var(--glowAmt, .5) * 18%));
+  filter: drop-shadow(0 0 calc(var(--glowAmt, .5) * 7px) hsl(44 96% 58% / calc(.28 + var(--glowAmt, .5) * .6)));
+  transform: scale(calc(.88 + var(--glowAmt, .5) * .3));
+  transform-origin: center;
+}
+
+/* ---- 帖子行 ---- */
+.sc__list { display: flex; flex-direction: column; position: relative; }
+.sc--big .sc__list { justify-content: space-around; }   /* 高度让给封面，见 .sc__cover 的 flex:1 */
+
+.sc__thread {
+  display: block; min-width: 0; padding: 7px 0;
+  border-bottom: 1px dashed var(--line-soft);
+  transition: background .16s var(--ease);
+}
+.sc__list > .sc__thread:last-child { border-bottom: 0; }
+
+.sc__t {
+  display: block; font-size: 14px; line-height: 1.55; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: color .16s var(--ease);
+}
+.sc--big .sc__t { font-size: 15px; white-space: normal; line-height: 1.6; }
+.sc__thread:hover .sc__t { color: var(--hot-link); text-decoration: underline; text-underline-offset: 3px; }
+
+.badge {
+  display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 4px;
+  font-size: 11px; font-family: var(--font-mono); vertical-align: 1px;
+  color: #fff; background: linear-gradient(150deg, #b04c7c, #8e3a63);
+}
+
+.sc__m {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; margin-top: 3px;
+  font-size: 12px; color: var(--ink-soft);
+}
+.sc__m .by { color: var(--by); font-weight: 500; }
+.sc__m i { font-style: normal; opacity: .6; }
+.sc__m .pull { display: inline-flex; align-items: center; gap: 3px; }
+.sc__m .pull .i { width: 11px; height: 11px; }
+.sc__m .mag { margin-left: auto; font-size: 12px; }
+.sc__m .mag b { font-size: 13px; }
+
+/* ============ 合并板块（左 创作所 ∥ 右 观测台）+ 最新 12 帖 ============
+   4 栏网格，两个 .bv__half 各跨 2 栏；每个 half 内部又是 2 栏 → 各自 2×2。
+
+   ⚠️ 隐藏不变量：.bv__halfGrid 的 gap 必须**严格等于** .bv__grid 的 gap（都是 14px）。
+   一个 half 的宽 = 2 栏 + 1 个 gap，它的内部 2 栏 + 同一个 gap 摊出来的两张卡，
+   水平中心因此与外侧 4 栏的列中心逐一对齐 —— 轨道的星点正是按列中心投放的（orbits()），
+   gap 一改就会错位，而且是那种「只差几像素、看着别扭但说不出哪里别扭」的错位。 */
+.bv--m .bv__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.bv__half { grid-column: span 2; position: relative; }
+.bv__halfGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+/* 两半之间的竖向细线。用绝对定位画在间隙正中，**不加 padding** ——
+   加 padding 会把右半的卡片推离外侧列中心，破坏上一条不变量。 */
+.bv__half + .bv__half::before {
+  content: ""; position: absolute; left: -8px; top: 0; bottom: 0; width: 1px;
+  background: linear-gradient(var(--line-soft), var(--line-soft) 82%, transparent);
+}
+
+/* ---- 右半（观测台）：4 张窄卡一行 + 横向精选带 ----
+   与左半的 2×2 刻意不同型。窄卡只有约 139px 宽，所以头部要瘦身：
+   子板块名压到 13px 并允许省略号，副标题整个让位（那一栏在窄卡里只会挤爆行）。 */
+/* 右半是 flex 列 + 精选带 `margin-top: auto` —— 这是「底边对齐」的**构造保证**，
+   不是靠调数字凑出来的：左半的高度由 2×2 的内容决定（实测 610），右半内容比它矮，
+   auto 外边距把精选带直接顶到半栏底部，两半的底边因此落在同一个 y 上。
+   以后改窄卡或精选带的高度都不会再把底边顶开（只有超高了才会）。 */
+.bv__half--narrow { display: flex; flex-direction: column; }
+.bv__half--narrow .strip { margin-top: auto; }
+
+.bv__halfGrid--narrow { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.bv__halfGrid--narrow .sc { padding: 9px 10px 10px; }
+.bv__halfGrid--narrow .sc__head { gap: 5px; margin-bottom: 6px; }
+.bv__halfGrid--narrow .sc__name { font-size: 13px; }
+.bv__halfGrid--narrow .sc__sub { display: none; }
+.bv__halfGrid--narrow .mag { font-size: 11px; }
+.bv__halfGrid--narrow .sc__thread { padding: 6px 0; }
+.bv__halfGrid--narrow .sc__t { font-size: 12.5px; line-height: 1.45; }
+.bv__halfGrid--narrow .sc__m { font-size: 11px; }
+
+/* 精选带：3 张铺满半栏宽度（flex 均分，不再横滑）。
+   缩略图 16:9 —— 与源图 1280×720 同比例，不裁。 */
+.strip { margin-top: 14px; }
+.strip__cap {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em;
+  color: var(--y-page); margin-bottom: 8px;
+}
+.strip__cap .i { width: 12px; height: 12px; fill: var(--y600); stroke: none; }
+.strip__rail { display: flex; gap: 12px; }
+.strip__card {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; gap: 6px; padding: 9px;
+  border: 1.5px solid var(--line-soft); border-radius: var(--r);
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  transition: transform .18s var(--ease), border-color .18s var(--ease), box-shadow .2s var(--ease);
+}
+.strip__card:hover { transform: translateY(-2px); border-color: var(--c600); box-shadow: var(--glow); }
+.thumb--strip { aspect-ratio: 16 / 9; border-radius: 8px; }
+.strip__t {
+  font-size: 12.5px; font-weight: 500; line-height: 1.45; color: var(--ink);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.strip__card:hover .strip__t { color: var(--hot-link); }
+.strip__m { font-size: 11.5px; color: var(--ink-faint); }
+
+/* ============ 通用面板头 ============ */
+/* 48→30：段与段之间的空白是这条线上最「没内容」的高度。实测三处 .panel
+   + .boards + 页脚的上边距合计约 400px，全在门与门之间，没有一个像素承载信息。 */
+.panel { margin-top: 30px; }
+.panel__head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.panel__title { font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--ink-deep); letter-spacing: .05em; }
+.panel__title .i { width: 15px; height: 15px; color: var(--y-text); fill: var(--y600); stroke: none; margin-right: 7px; vertical-align: -1px; }
+.panel__line { flex: 1; height: 1.5px; background: linear-gradient(90deg, var(--c400), transparent); }
+/* ⚠️ 裸在页面底上（见 --bg-veil 那段注释），所以用 --link-page 而不是 --link */
+.panel__more { font-size: 13px; color: var(--link-page); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.panel__more:hover { text-decoration: underline; }
+/* ⚠️ 裸在页面底上（见 --bg-veil 那段注释），所以用 --ink 而不是 --ink-soft */
+.panel__desc { margin: -4px 0 14px; font-size: 13px; color: var(--ink); max-width: 76ch; }
+
+/* ============ 今夜推荐 ============
+   它不再是独立的 .panel，而是板块 1 网格里的通栏一行（原来「航路指引」的格子），
+   所以长度要自己声明。上面一条虚线把它和板块 1 的卡片区隔开 —— 不加卡片边框，
+   因为它本来就是满宽一行、里面又是 5 张自带边框的卡，再套一层框会变成「盒中盒」。 */
+.recblock { grid-column: span 4; margin-top: 6px; }
+.recblock__head {
+  display: flex; align-items: center; gap: 10px;
+  padding-top: 12px; margin-bottom: 10px;
+  border-top: 1px dashed var(--line-soft);
+}
+.recblock__cap {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-display); font-size: 15px; font-weight: 700;
+  color: var(--ink-deep); letter-spacing: .04em;
+}
+.recblock__cap .i { width: 14px; height: 14px; color: var(--y-text); fill: var(--y600); stroke: none; }
+.recblock__head .panel__more { margin-left: auto; }
+
+/* ============ 推荐卡（bento：首张 2×2）============ */
+/* 1 大 + 4 小；**盒子一律 16:9**。
+   源图是 1280×720（多数）与少量 4:3 —— 原来用 grid-auto-rows 定行高，主卡算出来是
+   822×294 ≈ 2.8:1，图被 cover 上下裁掉三分之一。改成用 aspect-ratio 定盒子，
+   盒子的比例就等于图片的比例，不裁。
+   12 栏：主卡 span 6 → 613×345；四张小卡 span 3 → 299.5，行高由两张小卡撑出
+   （345−14)/2 = 165.5，即 1.81:1 —— 与 16:9 只差 1.5%，主卡与小卡两列自然齐平。 */
+.rec {
+  display: grid; grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 14px;
+}
+.rec__card {
+  position: relative; grid-column: span 3; min-width: 0;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r); overflow: hidden;
+  border: 1.5px solid var(--c400); box-shadow: var(--shadow-sm);
+  transition: transform .2s var(--ease), box-shadow .22s var(--ease);
+}
+.rec__card--big { grid-column: span 6; grid-row: span 2; }
+/* 桌面宽度下主卡不自己按 16:9 算高，而是**取右侧那两行小卡的高度之和**：
+   按 16:9 自算得 344.8，两行小卡是 350.9 —— 差 6.1px，主卡底下会留一道缝。
+   让主卡跟随（613×351 = 1.747，与 16:9 差 1.8%，cover 只裁掉 1.8% 的宽度，
+   肉眼不可见），换来与右侧 2×2 严格齐平。
+   ⚠️ 这条只在 >900px 成立：窄屏下主卡是独占一行、底下没有小卡可参照，
+   必须留着 aspect-ratio 撑高（卡里全是绝对定位的子元素，没有自身高度）。 */
+@media (min-width: 901px) { .rec__card--big { aspect-ratio: auto; } }
+.rec__card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.rec__cover { position: absolute; inset: 0; }
+/* 程序化封面：与 covers/ 那批 SVG 同一套母题 —— 三圈同心轨道环 + 金色十字星芒 + 星点。
+   原来只有 5 颗星点，五张纯渐变卡放在一起就是「五块色块」，认不出是这个站的封面。 */
+.rec__cover::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    /* 三圈同心轨道环 */
+    radial-gradient(ellipse 66% 44% at 68% 38%, transparent 0 48.5%, rgba(255, 255, 255, .24) 48.5% 50%, transparent 50%),
+    radial-gradient(ellipse 46% 30% at 68% 38%, transparent 0 48%, rgba(255, 255, 255, .19) 48% 50%, transparent 50%),
+    radial-gradient(ellipse 28% 19% at 68% 38%, transparent 0 47%, rgba(255, 255, 255, .15) 47% 50%, transparent 50%),
+    /* 金色十字星芒 */
+    linear-gradient(rgba(246, 216, 137, .82), rgba(246, 216, 137, .82)) 26% 66% / 11px 1.6px no-repeat,
+    linear-gradient(rgba(246, 216, 137, .82), rgba(246, 216, 137, .82)) 26% 66% / 1.6px 11px no-repeat,
+    /* 星点 */
+    radial-gradient(1.5px 1.5px at 22% 26%, rgba(255, 255, 255, .9), transparent 55%),
+    radial-gradient(1.2px 1.2px at 63% 16%, rgba(255, 255, 255, .8), transparent 55%),
+    radial-gradient(1.7px 1.7px at 79% 64%, rgba(255, 255, 255, .75), transparent 55%),
+    radial-gradient(1.1px 1.1px at 37% 76%, rgba(255, 255, 255, .7), transparent 55%),
+    radial-gradient(1.3px 1.3px at 48% 42%, rgba(255, 255, 255, .6), transparent 55%);
+}
+.rec__veil {
+  position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 12px; color: #fff; opacity: 0;
+  background: linear-gradient(to top, rgba(15, 36, 110, .94), rgba(15, 36, 110, .15) 66%, transparent);
+  transition: opacity .25s var(--ease);
+}
+.rec__card:hover .rec__veil, .rec__card:focus-visible .rec__veil { opacity: 1; }
+.rec__veil b { font-family: var(--font-display); font-size: 15px; }
+.rec__card--big .rec__veil b { font-size: 20px; }
+.rec__veil span { font-size: 12px; color: #cdd9ff; }
+.rec__score {
+  position: absolute; top: 9px; right: 9px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--y-ink);
+  background: linear-gradient(150deg, var(--y300), var(--y500));
+}
+.rec__score .i { width: 10px; height: 10px; fill: var(--y-ink); stroke: none; }
+
+/* ============ 今夜星图（2026-11-06 从 v3p 首页整节搬来）============
+   左边平面天球图 + 右边「最亮的 10 颗」。读法三条（方位 / 离心 / 亮度）见 app.js 里的注释。
+   ⚠️ 颜色全部走站点令牌，没有新色：金 = --hud-gold-s（浅色 #8a6a1f、暗色 --y400），
+      冷星 = --c700，网格 = --c400 / --c500，盘底 = --c800 的 4%。 */
+.ch {
+  /* ⚠️ 左列**封顶 720**（= 图的上限）＋ `justify-content: start`：
+     用 1fr 时列比图宽，图靠左之后会在图与右栏之间留出两百多像素的空档
+     （用户 2026-11-06：「右边最亮 10 星再往左边点」）。封顶后两栏紧贴。 */
+  /* 左列封顶 720、右列吃掉剩下的宽度：图贴左、列表紧挨着图，行线一直铺到卡片右边，
+     不会在图与列表之间留空档，也不会让卡片右侧空一块。*/
+  display: grid; grid-template-columns: minmax(0, 720px) minmax(340px, 1fr);
+  gap: 30px; align-items: start;
+  padding: 18px 20px 14px;
+  border: 1.5px solid var(--c400); border-radius: var(--r-lg);
+  /* 与首页其它卡片同一套皮（旧 .cst 的配方，令牌随主题翻）：
+     顶部一层色相光晕（--hue-bg-s / --hue-bg-l 就是为「随主题翻转的浅底」准备的）＋ 面色渐变。
+     ⚠️ 不能让它裸在页面底上 —— 用户 2026-11-06：「这一块的背景不要纯透明，保持和网站主题一致」。 */
+  background:
+    radial-gradient(120% 90% at 50% -20%, hsl(var(--hue, 218) var(--hue-bg-s) var(--hue-bg-l)), transparent 60%),
+    linear-gradient(180deg, var(--surface), var(--c100));
+  box-shadow: var(--shadow-sm);
+}
+.ch__fig { margin: 0; min-width: 0; }
+/* 图靠左放（用户：「星图再偏左一点」）——列宽比图宽，居中会多出两侧等宽的空白 */
+.ch__box { position: relative; max-width: 720px; margin-inline: 0 auto; }
+.ch__svg { display: block; width: 100%; height: auto; overflow: visible; }
+.ch__disk { fill: color-mix(in srgb, var(--c800) 4%, transparent); stroke: var(--c400); }
+.ch__grid { fill: none; stroke: var(--c400); }
+.ch__grid circle { stroke-dasharray: 3 5; stroke: var(--c500); }
+.ch__band { fill: none; stroke: hsl(var(--h) 72% 56%); stroke-width: 4; stroke-linecap: round; opacity: .75; }
+
+/* 冷星 / 热星：1.2 等以内是金，其余走 --c700 */
+.ch__dot { fill: var(--c700); transition: r .2s; transform-box: fill-box; transform-origin: center; }
+.ch__dot.is-warm { fill: var(--hud-gold-s); }
+.ch__dot:hover, .ch__dot.is-hl { stroke: var(--ink); stroke-width: 2; }
+.ch__halo { fill: var(--hud-gold-s); opacity: .08; pointer-events: none;
+  transform-box: fill-box; transform-origin: center; }
+@keyframes chHalo { 50% { opacity: .18; scale: 1.25; } }
+/* 前十名的虚线圈：慢转（12s 一圈）；点中时变成实线并加粗 */
+.ch__mk { fill: none; stroke: var(--hud-gold-s); stroke-width: 1; stroke-dasharray: 3 3;
+  pointer-events: none; transform-box: fill-box; transform-origin: center; animation: chSpin 12s linear infinite; }
+.ch__mk.is-hl { stroke-width: 2; stroke-dasharray: none; }
+@keyframes chSpin { to { rotate: 360deg; } }
+.ch__now { stroke: var(--hud-gold-s); stroke-width: 1.4; }
+/* 「此刻」脉冲：圆心那一圈，3.2s 一次 */
+.ch__pulse { fill: none; stroke: var(--hud-gold-s); transform-box: fill-box; transform-origin: center;
+  animation: chPulse 3.2s ease-out infinite; }
+@keyframes chPulse { from { scale: .4; opacity: .9; } to { scale: 5; opacity: 0; } }
+/* 扫描扇区：转的是渐变的起始角，不是盒子 —— 旋转方盒子会让外接矩形大 √2 倍，窄屏撑出横向滚动 */
+.ch__sweep { position: absolute; left: 50%; top: 50%; width: 81.2%; aspect-ratio: 1; translate: -50% -50%;
+  border-radius: 50%; pointer-events: none;
+  background: conic-gradient(from var(--swa), transparent 0 300deg,
+    color-mix(in srgb, var(--c700) 5%, transparent) 330deg,
+    color-mix(in srgb, var(--c700) 18%, transparent) 359.5deg, transparent 360deg);
+  opacity: 0; transition: opacity 1.2s 1.4s;
+  animation: chSweep 14s linear infinite; }
+@property --swa { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes chSweep { to { --swa: 360deg; } }
+
+/* ── 进场（v3p 原样搬来）：星点从圆心往外**一圈圈亮起来** ──
+   delay 挂在每个点的 `--dl` 上（由「离心」推出）⇒ 亮起的顺序＝越久越靠外，和这张图的读法同构。
+   ⚠️ 进场前用 visibility 藏，不用 opacity —— 星点的亮度本来就写在 opacity 属性上
+      （用它藏的话，进场结束后亮度回不到原值）。 */
+.ch.is-ready .ch__box:not(.is-in) .ch__dot,
+.ch.is-ready .ch__box:not(.is-in) .ch__halo { visibility: hidden; }
+.ch__box.is-in .ch__dot { animation: chDotIn .7s var(--ease) both; animation-delay: var(--dl, 0s); }
+.ch__box.is-in .ch__halo { animation: chDotIn .7s var(--ease) both, chHalo 3.8s ease-in-out infinite;
+  animation-delay: var(--dl, 0s), calc(var(--dl, 0s) + .7s); }
+.ch__box.is-in .ch__sweep { opacity: 1; }
+@keyframes chDotIn { from { scale: 0; opacity: 0; } }
+
+/* 扇区标签 / 圈标 / 序号：在 SVG 之上按 % 落点 */
+.ch__sec, .ch__ring, .ch__num { position: absolute; translate: -50% -50%; pointer-events: none; white-space: nowrap; }
+.ch__sec { display: grid; justify-items: center; font-size: 12px; line-height: 1.25; color: var(--ink-soft); }
+.ch__sec i { font: normal 500 12px/1 var(--font-mono); color: hsl(var(--h) 70% 38%); letter-spacing: .06em; }
+/* ⚠️ 暗色下 38% 的亮度贴在深底上只剩一团影子（实测截图里 III·04 几乎看不见）⇒ 提到 72% */
+[data-theme="dark"] .ch__sec i { color: hsl(var(--h) 72% 72%); }
+[data-theme="dark"] .ch__ring { background: var(--c200); }
+.ch__ring { font: 12px/1 var(--font-mono); color: var(--ink-faint); padding: 1px 4px; background: var(--surface); border-radius: 2px; }
+.ch__num { font: 600 12px/1 var(--font-mono); color: var(--hud-gold-s);
+  text-shadow: 0 0 4px var(--surface), 0 0 2px var(--surface); }
+
+.ch__key { display: grid; gap: 6px; margin-top: 18px; font-size: 12px; color: var(--ink-faint); }
+.ch__key span { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ch__key svg { width: 40px; height: 12px; color: var(--ink-faint); flex: none; }
+
+.ch__st { margin: 0 0 12px; font-family: var(--font-display); font-size: 16px; font-weight: 600;
+  letter-spacing: .05em; color: var(--ink-deep); }
+.ch__st small { font: 400 12px/1 var(--font-body); color: var(--ink-faint); letter-spacing: 0; margin-left: 6px; }
+/* 最亮的 10 颗：一行一颗，序号在左跨两行，正文与读数上下两行 */
+.bright { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line-soft); }
+.bright li { position: relative; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 2px 10px;
+  padding: 10px 8px; border-bottom: 1px solid var(--line-soft); transition: background .16s var(--ease); }
+.bright li.is-hl, .bright li:hover { background: var(--c100); }
+.bright__n { grid-row: span 2; font: italic 600 20px/1.1 var(--font-display); color: var(--hud-gold-s); }
+.bright a { font-size: 14px; line-height: 1.5; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 整行可点：链接本身的 ::after 铺满 li（v3p 同一套做法） */
+.bright a::after { content: ""; position: absolute; inset: 0; }
+.bright a:hover { color: var(--link); }
+.bright__m { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 12px; color: var(--ink-faint); }
+/* 星等：四角星 + 数字，站点 magchip 的同一套语汇，但小一号（这里是行内读数，不是徽章） */
+.chm { display: inline-flex; align-items: center; gap: 3px; font-family: var(--font-mono); font-size: 12px; color: var(--hud-gold-s); }
+.chm svg { width: 11px; height: 11px; fill: currentColor; stroke: none; }
+.chm b { font-weight: 700; }
+
+.ch__tip { position: absolute; z-index: 3; pointer-events: none; padding: 7px 10px; border-radius: var(--r-sm);
+  background: rgba(15, 36, 110, .95); color: #fff; box-shadow: 0 10px 26px -8px rgba(15, 36, 110, .6);
+  max-width: 300px; }
+.ch__tip b { display: block; font-family: var(--font-display); font-size: 13px; line-height: 1.4; }
+.ch__tip span { display: block; margin-top: 3px; font-size: 12px; color: #c9d6ff; }
+
+@media (max-width: 1080px) {
+  .ch { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .ch__side { max-width: 720px; margin-inline: auto; width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ch__pulse, .ch__sweep { display: none !important; }
+  .ch__mk, .ch__halo, .ch__dot { animation: none !important; }
+}
+
+/* ============ 页脚 ============ */
+/* 2026-11-07 用户：「footer 顶部能不能做些设计去更好地过渡进去？别人相当于 footer 只是个 board，有点生硬。」
+   ⇒ 拆掉原来那条 **2px 硬边 + 34px 空隙**，改成一段「**入夜带**」：
+       页面先淡进星空（星点 + 大气辉光），再落到标题画面那张夜景里；
+       交界处压一条极浅的**晨昏线**（金色椭圆弧），读作「脚下这颗行星的边缘」。
+   分工（三层，缺一层就会露边）：
+     ① `.footer` 自己的白/深底色从透明渐入 —— 否则页面色与 footer 底色在第一条像素上就断层；
+     ② `.title__bg` 的 **mask** 从透明长到不透明 —— 影像本体负责「夜」的淡入，
+        这一条是整段过渡的主承重，所以顶端**没有任何硬边**；
+     ③ `.title::before` 星点/辉光 + `.title::after` 晨昏线 —— 只做气氛，不承担遮罩。
+   ⚠️ 星点与晨昏线都跟着 `--dawn` 走，改带子高度不用改第二处。 */
+.footer {
+  --dawn: clamp(180px, 24vh, 280px);
+  --dawn-fade: calc(var(--dawn) * 1.5);
+  margin-top: 0;
+  border-top: 0;
+  background: linear-gradient(180deg, transparent 0, var(--footer-bg) var(--dawn));
+}
+.footer__note { padding: 0 0 22px; font-size: 12px; color: var(--ink-soft); font-family: var(--font-mono); }
+
+/* ============ 页脚 · 标题画面（v3p 首页 .title 整块照抄）============
+   四层背景（CG / 极光 / 星盘 / 流星）+ 内容层 .title__in。
+   ⚠️ 这块在昼夜两种主题里都是「深色语境」（压在 CG 遮罩上），所以在 .title 上就地把文字与金色
+      令牌写死成深底版 —— 与 v2p「封面叠字」同一条例外，不跟主题走。 */
+.title {
+  position: relative; overflow: hidden;
+  min-height: clamp(560px, 86vh, 820px);
+  display: flex; align-items: stretch;
+  --ink: #eef1fd; --ink-soft: #c3cbe8; --ink-faint: #97a2c8;
+  --gold: #ecc97c; --gold-ink: #1c1405; --rose: #c98a9a;
+  --win: rgba(8, 12, 30, .74); --win-edge: rgba(180, 200, 255, .28);
+  --deep: #050813;
+  color: var(--ink);
+}
+/* ② 影像淡入 —— 整段过渡的主承重。
+   ⚠️ 用 **mask** 而不是「在上面压一层从页面色到深色的渐变」：
+      那层渐变在带子底部会以某个不透明度戛然而止，与下面的影像拼出一条新硬边（换汤不换药）。
+      mask 是让影像自己「长出来」，顶端永远是透明的 ⇒ 页面背景原样透过来，没有第一条像素的断层。 */
+.title__bg {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(90deg, rgba(5, 8, 19, .95) 0%, rgba(5, 8, 19, .82) 34%, rgba(5, 8, 19, .25) 66%, rgba(5, 8, 19, .5) 100%),
+    url("./bgs/bg-6.avif") 72% 30% / cover no-repeat;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 var(--dawn-fade, 360px));
+  mask-image: linear-gradient(180deg, transparent 0, #000 var(--dawn-fade, 360px));
+}
+.title__bg::after { content: ""; position: absolute; inset: auto 0 0; height: 40%;
+  background: linear-gradient(transparent, var(--deep)); }
+
+/* ── ③ 入夜带：星点 + 大气辉光（晨昏线在下面一条）──
+   叠了三类东西，从上层到下层：
+     · 晨昏线上方的**暮光**（金 → 玫瑰，站点既有那两档色）——把「地平线」染暖，
+       读作黄昏最后一段光，而不是一条无来由的划线；
+     · 两团**大气辉光**（极光的青 / 紫，与 `.title__aur` 同色，不引入新色）；
+     · 六层错位平铺的**星点**（大小/密度都不同）。
+   星点 mask 上下都收到 0，所以不会出现「一排星突然开始 / 突然结束」；
+   最密的一段落在晨昏线上方，读作「地平线上空的星野」。
+   ⚠️ 试过在地下再压一条「暮光带」把天空压深、让星点更明显 —— **回退了**：
+      深蓝半透明压在亮天空上会变成一层灰蓝的雾，而且在雾的下沿又多出一条分界线（换汤不换药）。 */
+.title::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0;
+  height: var(--dawn-fade, 360px); z-index: 1; pointer-events: none;
+  background-image:
+    radial-gradient(64% 8% at 50% 60%, rgba(236, 201, 124, .13),
+      rgba(201, 138, 154, .05) 46%, transparent 72%),
+    radial-gradient(58% 26% at 38% 66%, rgba(120, 220, 200, .07), transparent 70%),
+    radial-gradient(44% 24% at 76% 64%, rgba(150, 120, 255, .06), transparent 72%),
+    radial-gradient(1.5px 1.5px at 18% 62%, rgba(255, 255, 255, .9), transparent 60%),
+    radial-gradient(1.1px 1.1px at 71% 44%, rgba(220, 232, 255, .78), transparent 60%),
+    radial-gradient(1.9px 1.9px at 43% 78%, rgba(255, 255, 255, .95), transparent 60%),
+    radial-gradient(1.2px 1.2px at 88% 58%, rgba(236, 201, 124, .85), transparent 60%),
+    radial-gradient(1.2px 1.2px at 6% 36%, rgba(255, 255, 255, .62), transparent 60%),
+    radial-gradient(1.6px 1.6px at 57% 20%, rgba(255, 255, 255, .5), transparent 60%);
+  background-size:
+    100% 100%, 100% 100%, 100% 100%,
+    340px 220px, 260px 180px, 420px 260px, 300px 200px, 380px 240px, 460px 300px;
+  background-repeat:
+    no-repeat, no-repeat, no-repeat,
+    repeat, repeat, repeat, repeat, repeat, repeat;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0 18%, #000 54%, #000 84%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0 18%, #000 54%, #000 84%, transparent 100%);
+}
+/* ── ③ 晨昏线 ──
+   一条**极浅的金色椭圆弧**（170vw 宽、~0.86·dawn 高 ⇒ 视口内两端只落 ~20px），
+   读作「脚下这颗行星的边缘」。它只画 `border-top`，所以元素下方不会多出一条线；
+   左右两侧的弧段落在视口之外，不会横穿正文。
+   ⚠️ 不用 SVG：这一条只有 1px，数据 URI 里的 SVG 既不能继承 `--gold` 也不能在 RM 下统一降级；
+      椭圆 + border-top 是纯 CSS，改高度只动一个数。 */
+.title::after {
+  content: ""; position: absolute; left: 50%; top: calc(var(--dawn) * .60);
+  width: 170vw; height: calc(var(--dawn) * .86); translate: -50% 0;
+  border-top: 1px solid rgba(236, 201, 124, .46); border-radius: 50%;
+  filter: drop-shadow(0 -2px 10px rgba(236, 201, 124, .30));
+  z-index: 1; pointer-events: none;
+}
+/* ⚠️ v2p 那只 `.dial`（HUD 文本框右下角）除了宽高，还带 transform: translate(28%,49%)、
+   mask-image 径向遮罩、z-index:-1、aspect-ratio —— 照抄的星盘要逐项复位，否则实测会被
+   往右推 229.6px（28%×820）、上半圈被遮罩吃掉、还钻到背景后面去。 */
+.footer .title .title__dial {
+  position: absolute; left: -300px; right: auto; top: 50%; bottom: auto;
+  width: 820px; height: 820px; margin-top: -410px; aspect-ratio: auto;
+  transform: none; translate: none; -webkit-mask-image: none; mask-image: none;
+  z-index: auto; opacity: .6; pointer-events: none;
+}
+.title__sky { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.title__aur { position: absolute; inset: -20% -10% 30% 30%; pointer-events: none; mix-blend-mode: screen; opacity: .55; filter: blur(40px);
+  background: radial-gradient(40% 30% at 30% 40%, rgba(120, 220, 200, .35), transparent 70%),
+              radial-gradient(35% 26% at 62% 30%, rgba(150, 120, 255, .32), transparent 70%),
+              radial-gradient(30% 22% at 80% 55%, rgba(240, 160, 200, .22), transparent 70%);
+  animation: aur 26s ease-in-out infinite alternate; }
+@keyframes aur { from { transform: translate(-4%, 2%) scale(1); } to { transform: translate(5%, -3%) scale(1.12); } }
+
+.title__in {
+  position: relative; z-index: 2;   /* 压在入夜带与晨昏线之上（那两件是 z1 的装饰层） */
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 1fr auto;
+  /* ⚠️ 上内边距必须**整段跨过淡入区**（--dawn-fade，不是 --dawn）：影像在 fade 结束前都还没
+     完全显形，内容一旦压进这一段，白字就会落在「半透的影像 + 浅色页面」上 ——
+     375 下实测「星海社」三个字直接糊进亮天空里。+32 是给晨昏线辉光的余量。 */
+  gap: 28px 40px; padding: calc(var(--dawn-fade, 360px) + 32px) 0 40px;
+}
+.title__lead { grid-column: 1; grid-row: 1; align-self: center; max-width: 560px; }
+.title__sys { grid-column: 2; grid-row: 1; align-self: start; }
+.title__ann { grid-column: 1 / -1; grid-row: 2; max-width: 860px; }
+
+.title__eye { margin: 0 0 18px; font-family: var(--font-mono); font-weight: 500; font-size: 12px; line-height: 1;
+  letter-spacing: .26em; color: var(--gold); }
+.title__logo { margin: 0; font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(56px, 8vw, 104px); line-height: 1; letter-spacing: .14em;
+  text-shadow: 0 0 36px rgba(159, 192, 255, .35); }
+.title__mk { position: relative; display: inline-block; }
+.title__c { --d0: 200ms; }
+.title__orb { position: absolute; left: -8%; top: 50%; width: 116%; height: auto;
+  translate: 0 -46%; rotate: -8deg; overflow: visible; pointer-events: none; }
+.title__orb ellipse { fill: none; stroke: var(--gold); stroke-opacity: .45; stroke-dasharray: 2 5; }
+.title__moon { fill: var(--gold); filter: drop-shadow(0 0 6px var(--gold)); }
+.title__en { display: block; margin-top: 16px; font-family: var(--font-display); font-style: italic; font-weight: 500;
+  font-size: clamp(18px, 2vw, 24px); line-height: 1; letter-spacing: .14em; color: var(--ink-soft); text-shadow: none; }
+.title__tag { margin: 20px 0 30px; font-family: var(--font-display); font-weight: 500; font-size: 16px; line-height: 1.8;
+  letter-spacing: .06em; color: var(--ink-soft); }
+
+/* 标题逐字点亮 */
+.js .lt { display: inline-block; animation: chIn .8s var(--ease) both; animation-delay: calc(var(--i) * 85ms + var(--d0, 120ms)); }
+@keyframes chIn { from { opacity: 0; filter: blur(8px); translate: 0 .25em; } }
+
+/* ---- galgame 菜单：左边一条竖向星座，悬停点亮对应的星 ---- */
+.menuw { position: relative; padding-left: 18px; }
+.menu__cst { position: absolute; left: -4px; top: 0; width: 24px; overflow: visible; pointer-events: none; }
+.menu__ln { fill: none; stroke: var(--gold); stroke-opacity: .35; stroke-width: 1; }
+.menu__st circle { fill: var(--ink-soft); transition: fill .3s; }
+.menu__st .menu__halo { fill: var(--gold); opacity: 0; transition: opacity .3s; }
+.menu__gl { fill: var(--gold); opacity: 0; scale: .3; transition: opacity .3s, scale .4s var(--ease); }
+.menu__st.is-on circle { fill: var(--gold); }
+.menu__st.is-on .menu__halo { opacity: .18; }
+.menu__st.is-on .menu__gl { opacity: 1; scale: 1; }
+.menu { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.menu__i { position: relative; display: grid; grid-template-columns: 112px auto minmax(0, 1fr); align-items: baseline; gap: 16px;
+  padding: 9px 14px 9px 22px; border-radius: 2px; transition: background .25s, padding .25s var(--ease); }
+a.menu__i:hover, a.menu__i:focus-visible {
+  background: linear-gradient(90deg, rgba(236, 201, 124, .16), transparent);
+  padding-left: 30px; outline: 0;
+}
+.menu__k { font-family: var(--font-mono); font-weight: 500; font-size: 12px; line-height: 1; letter-spacing: .2em; color: var(--gold); }
+.menu__t { font-family: var(--font-display); font-weight: 600; font-size: 18px; line-height: 1.3; letter-spacing: .14em; color: var(--ink); }
+.menu__d { font-size: 13px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu__i.is-off .menu__t, .menu__i.is-off .menu__k { opacity: .5; }
+a.menu__i:hover .menu__t { color: var(--gold); }
+
+/* ---- 站点读数 ---- */
+.title__sys { margin: 0; padding: 14px 18px; display: grid; gap: 10px;
+  border-left: 1px solid rgba(236, 201, 124, .45); font-family: var(--font-mono); }
+.title__sys div { display: grid; gap: 2px; }
+.title__sys dt { font-size: 12px; letter-spacing: .2em; color: var(--ink-faint); }
+.title__sys dd { margin: 0; font-size: 20px; font-weight: 500; color: var(--ink); letter-spacing: .04em; }
+
+/* ---- 公告对话框（v3p 的 .win--plate）---- */
+.title__ann { position: relative; margin-top: 18px; padding: 30px 30px 24px;
+  background: var(--win); border: 1px solid var(--win-edge); border-radius: 14px;
+  backdrop-filter: blur(12px); box-shadow: 0 18px 40px -18px rgba(0, 0, 0, .6); cursor: default; }
+.title__plate {
+  position: absolute; left: 22px; top: 0; translate: 0 -50%;
+  display: inline-flex; align-items: center; gap: 8px; padding: 5px 16px 5px 12px;
+  background: linear-gradient(90deg, var(--gold), color-mix(in srgb, var(--gold) 70%, var(--rose)));
+  color: var(--gold-ink); font-family: var(--font-display); font-weight: 600; font-size: 14px; line-height: 1;
+  letter-spacing: .1em; clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+}
+.title__plate small { font-family: var(--font-mono); font-weight: 500; font-size: 12px; line-height: 1; letter-spacing: .1em; opacity: .85; }
+.title__annT { margin: 0 0 6px; font-family: var(--font-display); font-weight: 600; font-size: 17px; line-height: 1.5; letter-spacing: .04em; }
+.title__annT a { color: var(--ink); }
+.title__annT a:hover { color: var(--gold); }
+.title__annB { margin: 0; min-height: 3.4em; font-size: 15px; color: var(--ink-soft); }
+.caret { display: inline-block; width: .55em; height: 1.1em; margin-left: 2px; vertical-align: -.18em;
+  background: var(--gold); animation: caret 1s steps(1) infinite; }
+@keyframes caret { 50% { opacity: 0; } }
+.title__ann.is-done .caret { display: none; }
+.title__next { position: absolute; right: 26px; bottom: 14px; width: 10px; height: 8px; color: var(--gold);
+  animation: nextBob 1.4s ease-in-out infinite; visibility: hidden; }
+.title__ann.is-done .title__next { visibility: visible; }
+@keyframes nextBob { 50% { translate: 0 3px; opacity: .55; } }
+
+/* ---- 背景星盘 ----
+   ⚠️ v2p 本来就有一只 `.dial`（HUD 文本框右下角那只，width: clamp(330px,30vw,380px) / opacity .85）。
+      照抄 v3p 的星盘必须整组收进 `.title` 作用域，否则宽度和透明度会被既有那条 `.dial` 抢走
+      （2026-11-07 实测：抄来的 820px 盘被压成 380px、.6 变成 .85）。
+      同名 `@keyframes dialSpin` 也不再重复声明，直接用 v2p 那条（transform: rotate 同效）。 */
+.title .dial { color: var(--gold); }
+.title .dial__o, .title .dial__i { transform-box: view-box; transform-origin: 300px 300px; }
+.title .dial__o { animation: dialSpin 240s linear infinite; }
+.title .dial__i { animation: dialSpin 150s linear infinite reverse; }
+.title .dial circle, .title .dial ellipse { fill: none; stroke: currentColor; stroke-opacity: .32; stroke-width: 1; }
+.title .dial__t { stroke: currentColor; stroke-opacity: .5; }
+.title .dial__t line { stroke-width: 1; }
+.title .dial__h text { font-family: var(--font-mono); font-weight: 500; font-size: 14px; fill: currentColor; fill-opacity: .7; text-anchor: middle; }
+.title .dial__pt { fill: currentColor; }
+.title .dial__ec { stroke-dasharray: 1 6; stroke-opacity: .55 !important; }
+/* 星盘的刻字压在菜单与标语上 —— 只当纹理，压暗 */
+.footer .title__dial .dial__h text { fill-opacity: .32; }
+.footer .title__dial .dial__t { stroke-opacity: .32; }
+
+/* ---- 流星：v2p 在 style.css 上方（`.skyfx .shoot`，第 342 行起）已经有**逐字相同**的一套，
+   连同 `@keyframes shoot` 和昼 / 夜两种光色。这里不再重复声明 —— 重复那份会把它白天那层
+   金色反光顶掉（后来的规则赢）。页脚只用 `<span class="shoot" style="--x/--y/--a/--dur/--del">`。 */
+
+@media (max-width: 900px) {
+  /* ⚠️ 这里原来写死 `padding-top: 48px`，会把上面那条「跨过入夜带」的上内边距在窄屏整个顶掉 ——
+     375 实测：白字「星海社」直接压在还没显形的亮天空上，糊成一片。
+     窄屏与宽屏用同一个值，别再写死数字。 */
+  .title__in { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto;
+    padding-top: calc(var(--dawn-fade, 360px) + 32px); }
+  .title__lead, .title__sys, .title__ann { grid-column: 1; grid-row: auto; }
+  .title__sys { grid-template-columns: repeat(4, auto); justify-content: start; gap: 22px; }
+  .menu__i { grid-template-columns: 92px minmax(0, 1fr); }
+  .menu__d { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title__aur { display: none !important; }
+  .title .dial__o, .title .dial__i, .title__next, .title__sky .shoot, .caret { animation: none !important; }
+  .title__sky .shoot { opacity: 0 !important; }
+}
+
+/* 页脚统计细线（从首屏搬下来的 4 个数字）。
+   设计意图是「存在感低到不打断页脚，但需要时一眼扫得到」：
+   一条上边线 + 12px + 数字加粗、标签压淡、用 · 分隔，
+   高度只有 34px —— 对比原来首屏那 4 张 86px 的卡。 */
+.tally {
+  display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap;
+  padding: 9px 0 0;
+  border-top: 1px solid var(--line-soft);
+  font-size: 12px; color: var(--ink-soft);
+}
+.tally__i { display: inline-flex; align-items: baseline; gap: 4px; }
+.tally__k { color: var(--ink-faint); }
+.tally__i b {
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  color: var(--ink-deep); font-variant-numeric: tabular-nums;
+}
+.tally__i--live b { color: var(--link); }
+.tally__sep { font-style: normal; color: var(--line); }
+
+/* 板块2 的四张「中卡」自动拼成 2×2 —— base 规则 .sc--mid{span 2} 就够了，
+   这里刻意不写任何定位。曾经把大卡镜像到右列（grid-column: 3 / span 2），
+   踩了 CSS Grid 自动放置的共享行游标：窄卡要回列 1 而游标停在列 3 → 行 +1，
+   于是大卡跨的「两行」里第一行几乎为空，实测顶差 105px、底差 279px。
+
+   板块3 的「四张等宽卡 + 横向精选带」和 `.bv--c` 那套调度已经删掉：
+   二、三板块现在合并成一个 section（左创作所 / 右观测台 + 最新 12 帖），
+   精选带的数据与合并板块里的卡片重复，位置也让给了「最新 12 帖」。
+   （合并板块的几何见上方 .bv__half 那一段；坑本身留在 memories.md 2.13。） */
+
+
+/* ============ 星等图例（在页脚）============
+   把原创机制讲清楚。三颗星自带不同的 --glowAmt，视觉上直接演示「越小越亮」。
+   它原来是 .hero 的最后一个网格子元素（`grid-column: span 12`）——
+   用户指出那位置在页面中段、没有意义。现在与统计细线并列在页脚：
+   两者都是「看得懂就用不到、需要时才翻」的小字条，本来就该待在一起。
+   因为它不再是网格子元素，`grid-column` 那行随之删掉。 */
+.legend {
+  display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap;
+  padding: 14px 0 0;
+}
+.legend__cap {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em;
+  color: var(--y-text); padding: 3px 10px;
+  border: 1.5px dashed var(--y600); border-radius: var(--r-pill);
+}
+.legend .mag { margin-left: 0; font-size: 12px; }
+.legend .mag b { font-size: 13px; }
+.legend__label { margin-left: 5px; font-family: var(--font-body); color: var(--ink-faint); }
+.legend__txt { margin-left: auto; font-size: 12px; color: var(--ink-soft); }
+.legend__txt b { color: var(--ink); }
+
+/* ============ 板块头 title：格子条 filmstrip ============
+   血统：GALBase 的「望远镜 + 深蓝镂空块 + 白底深字 + 末端深块」那一条。
+   三处刻意不照搬（都是量出来的，见 memories.md 2.20）：
+   1) 取色全走 --hue 与主题令牌，不写死 #00187C —— 深块/边框/字色随板块色相与
+      主题一起翻转，所以暗色下不是一条白亮带（那是之前暗色页脚白块的老毛病）。
+   2) 边长 clamp —— 最长子板块名「星轨研讨室」7 格 × 50px = 350px，而手机内容宽
+      只有 351px，固定尺寸会直接溢出（探针实测 375px 下 480 vs 360）。
+   3) 弧线用 v2p 自己的形状（.orbit 的二次贝塞尔拱 + .js/.is-drawn 描入），
+      不是 GALBase 那个圆抓 —— 照它原位放，弧最粗的一段正好压在两个深块上，
+      同色系叠同色系，实测基本看不见。
+
+   结构： .fs > [ .fs__tel ｜ .fs__wrap > ( .fs__arc + .fs__bar > .fs__t… ) ]
+   .fs 自带站位内边距，装饰不会溢到相邻行或相邻板块头去。 */
+.fs {
+  position: relative; display: inline-flex; align-items: flex-end; margin: 0;
+  /* 格子边长同时跟**视口**与**字数**走 —— 名字因此不再被「3–4 个字」绑住。
+     一条 n 格的条（n = 名字字数 + 望远镜格 + 星环格，由 JS 用 --n 传进来）总宽是
+     tile × (n + 1.46) + 4（1.46t 是给望远镜留的站位，4px 是条的 padding 与边框）。
+     反解出「刚好填满」的 tile，再夹在 22–50px：窄屏上名字越长格子越小，
+     名字短时撑到 50px 封顶，不会无脑拉满。
+     用 vw 而不是 %：--tile 会被 padding / width / font-size 分别取用，
+     % 在每个属性里的参照都不同，vw 只绑视口，用量才一致。 */
+  --tile: clamp(22px, calc((100cqw - 90px) / (var(--n, 7) + 1.46)), 50px);
+  /* 站位：望远镜宽 1.52t，只让出 1.46t → 压住条左缘 0.06t（≈3px，相切而不糊在一起）；
+     上要容下望远镜（比条顶高 0.52t）与弧线（0.46t）取大者；下要容下弧线尾巴的余量 */
+  padding-left: calc(var(--tile) * 1.46);
+  padding-top: calc(var(--tile) * .72);
+  padding-bottom: calc(var(--tile) * .12);
+
+  --fs-bar: var(--surface);
+  --fs-bar-line: hsl(var(--hue, 218) 46% 84%);
+  --fs-bar-shadow: 0 2px 10px -2px rgba(15, 36, 110, .18);
+  --fs-bg: var(--surface);
+  --fs-fg: hsl(var(--hue, 218) 55% 28%);
+  --fs-edge: hsl(var(--hue, 218) 42% 80%);
+  --fs-deep: hsl(var(--hue, 218) 68% 30%);
+  --fs-deep-fg: #fff;
+  --fs-tel: hsl(var(--hue, 218) 68% 30%);
+  /* 格子条首次出现描线动画 */
+  animation: fs-draw-in .62s var(--ease) both;
+}
+
+@keyframes fs-draw-in {
+  from { opacity: 0; clip-path: inset(0 100% 0 0); }
+  to { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fs { animation: none; }
+}
+[data-theme="dark"] .fs {
+  --fs-bar-line: hsl(var(--hue, 218) 40% 26%);
+  --fs-bar-shadow: 0 4px 18px -4px rgba(0, 0, 0, .6);
+  --fs-fg: hsl(var(--hue, 218) 68% 80%);
+  --fs-edge: hsl(var(--hue, 218) 34% 32%);
+  /* 暗色下深块要比页底亮、压在它上面的字要能压得住：hue 268 时 50% 明度配近黑字
+     只有 3.05:1，抬到 64% 才过 4.5:1（探针实测 5.10:1）。 */
+  --fs-deep: hsl(var(--hue, 218) 58% 64%);
+  --fs-deep-fg: #0b1220;
+  --fs-tel: hsl(var(--hue, 218) 50% 58%);
+}
+.fs__wrap { position: relative; }
+.fs__bar {
+  position: relative; z-index: 2; display: flex; align-items: center; padding: 2px;
+  border-radius: 5px; background: var(--fs-bar);
+  border: 1px solid var(--fs-bar-line); box-shadow: var(--fs-bar-shadow);
+}
+.fs__t {
+  width: var(--tile); height: var(--tile); flex: none;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 600;
+  font-size: calc(var(--tile) * .54); line-height: 1;
+  color: var(--fs-fg); background: var(--fs-bg); border: 1px solid var(--fs-edge);
+}
+.fs__t--deep { background: var(--fs-deep); color: var(--fs-deep-fg); }
+.fs__t svg { display: block; width: calc(var(--tile) * .84); height: calc(var(--tile) * .84); }
+.fs__t--cap svg { width: calc(var(--tile) * .8); height: calc(var(--tile) * .8); }
+/* 逐格点亮。--i 只能进 animation-delay：塞进 animation 简写会被当成 <time> 解析，
+   整条声明在计算值阶段就失效（forum.css 那边踩过一次，同一条坑）。 */
+@keyframes fsIn { from { opacity: 0; transform: translateY(-.14em); } to { opacity: 1; transform: none; } }
+.js .fs__t { opacity: 0; animation: fsIn .34s var(--ease) both; animation-delay: calc(var(--i, 0) * 40ms); }
+
+/* 望远镜：挂在格子条左侧，悬停绕三脚架底座倾 8°（GALBase 的招牌动作） */
+.fs__tel {
+  position: absolute; z-index: 4; left: 0; bottom: 2px;
+  width: calc(var(--tile) * 1.52); height: calc(var(--tile) * 1.5);
+  color: var(--fs-tel); fill: currentColor;
+  transform-origin: 29% 68%;              /* = GALBase 的 22px 51px / 76×75：三脚架底座 */
+  transition: transform .5s var(--ease);
+}
+.fs:hover .fs__tel { transform: rotate(8deg); }
+/* 弧线：套在格子条正上方，两脚落在条顶。底边贴住 .fs__wrap 顶 → 不可能外溢。
+   ⚠️ width 必须显式写 100%，不能只靠 left:0;right:0 —— <svg> 是 replaced element，
+   绝对定位下 width:auto 取的是**固有宽度**（由 viewBox 宽高比推出来），不是约束方程的
+   「包含块宽 - left - right」。只写 left/right 时它按 1200:60 的比例长出 313px，
+   在 375px 视口里直接横向溢出 14px（这是实测到的，不是推测）。 */
+.fs__arc {
+  position: absolute; z-index: 3; left: 0; width: 100%; bottom: 100%;
+  height: calc(var(--tile) * .46); overflow: hidden; pointer-events: none;
+  color: hsl(var(--hue, 218) 68% 60%);
+}
+
+/* 悬停时沿弧线掠过的星点。
+   ⚠️ 试过「短虚线 + 动画 dashoffset」，**不可行**：`.fs__arc` 是拉伸的 viewBox
+   （1200×28 → 实际约 255×23px），配上 vector-effect="non-scaling-stroke" 之后
+   Chrome 是按**屏幕长度**算虚线图案的，而属性里的 dasharray 是天量单位 ——
+   路径天量长 1197、屏幕长只有 255，于是 dasharray:34 1200 + dashoffset:756 把那一小段
+   甩到了路径之外，实测整条弧上一个金像素都没有（截图放大看了，也是空的）。
+   现在改成用 left/top 百分比沿同一条抛物线走 —— 百分比是相对包含块的，
+   任何宽度下都对，不需要知道路径长度。 */
+.fs__sparks {
+  position: absolute; z-index: 3; left: 0; width: 100%; bottom: 100%;
+  height: calc(var(--tile) * .46); pointer-events: none;
+}
+/* 抛物线上各点的 y（viewBox y 28..56：顶点 31 → 11%，两端 56 → 100%）。
+   9 个关键帧取 t=0,.125,…,.875,1，x 基本线性、y = 56−100t+100t²。 */
+.fs__spark {
+  position: absolute; left: 0; top: 100%; width: 6px; height: 6px; border-radius: 50%;
+  margin: -3px 0 0 -3px;
+  /* 用 --y600（比 --y500 深一档）当本体：亮色页底上 #f6d889 太淡几乎看不见。
+     #dfbd65 在亮底/暗底两侧都读得出来。 */
+  background: var(--y600); box-shadow: 0 0 6px var(--y500), 0 0 2px #fff;
+  opacity: 0;
+  /* 基础态 animation:none —— 不是「paused」。用户要的是「只播一次」：
+     悬停时挂上动画、离开时把 animation 整个摘掉，下次悬停才会**从头重播**。
+     如果用 paused，第一次跑完后会停在终态，再悬停就什么都不动了。 */
+  animation: none;
+}
+.fs__spark--b { width: 4px; height: 4px; margin: -2px 0 0 -2px; --dur: 2.3s; --del: .5s; }
+.fs__sparks { opacity: 0; transition: opacity .22s var(--ease); }
+.fs:hover .fs__sparks { opacity: 1; }
+.fs:hover .fs__spark {
+  animation-name: fsSpark;
+  animation-duration: var(--dur, 1.6s);
+  animation-timing-function: linear;
+  animation-delay: var(--del, 0s);
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+}
+@keyframes fsSpark {
+  0%    { left: .2%;  top: 100%;  opacity: 0; }
+  8%    { opacity: 1; }
+  12.5% { left: 12.5%; top: 60.9%; }
+  25%   { left: 25.1%; top: 33.0%; }
+  37.5% { left: 37.6%; top: 16.3%; }
+  50%   { left: 50.1%; top: 10.7%; }
+  62.5% { left: 62.6%; top: 16.3%; }
+  75%   { left: 75.1%; top: 33.0%; }
+  87.5% { left: 87.6%; top: 60.9%; }
+  92%   { opacity: 1; }
+  100%  { left: 99.8%; top: 100%; opacity: 0; }
+}
+
+/* ============ 共享小件（三页都会用到，所以放 style.css）============ */
+
+/* 标签胶囊：只给色相，深浅走 --hue-* 令牌 ⇒ 暗色主题自动成立。
+   板块页 / 帖内页 / 首页三处都用；原先只在 forum.css 里，而首页不加载那一份。 */
+.tag {
+  display: inline-flex; align-items: center;
+  padding: 1px 8px; border-radius: var(--r-pill);
+  font-size: 12px; line-height: 1.7;
+  border: 1px solid hsl(var(--th, 218) var(--hue-bd-s) var(--hue-bd-l));
+  background: hsl(var(--th, 218) var(--hue-bg-s) var(--hue-bg-l));
+  color: hsl(var(--th, 218) var(--hue-fg-s) var(--hue-fg-l));
+}
+.tag--sm { padding: 0 6px; line-height: 1.6; }
+
+/* 热门 TAG：.tag 是 inline-flex 的胶囊，这里补上 button 需要的那几项 */
+/* `.tags` / `.tags__b` / `.tags__n` 随热门 TAG 改版删除 —— 那三个类只有那一处消费者。
+   共享的胶囊是 `.tag` / `.tag--sm`（板块页与帖内页在用），不在这条线上。 */
+
+/* 提示条：占位交互共用（首页 / 帖内页各挂一个 #toast） */
+.toast {
+  position: fixed; left: 50%; bottom: 26px; z-index: 120;
+  max-width: min(88cqw, 420px); padding: 10px 16px;
+  border: 1.5px solid var(--c400); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink);
+  font-size: 13px; box-shadow: var(--shadow-lg);
+  opacity: 0; transform: translate(-50%, 10px); pointer-events: none;
+  transition: opacity .22s var(--ease), transform .22s var(--ease);
+}
+.toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+
+/* ============ 看背景模式（bg-only）============
+   抄自 GALBase 论坛的「看背景」按钮（galbase.top 的 /js/footer.js + /css/style.css）：
+     .show_bg { position: fixed; right: 1cqw; bottom: 1cqw; cursor: pointer; z-index: 100 }
+     点一下 → 把 body 里**所有 <div>** 的 visibility 设成 hidden，唯独留下按钮自己；
+     再点一次 → 全部还原。
+   它最巧妙的地方是**用 visibility 而不是 display**：元素照旧占位、布局一点不动，
+   所以切回来时滚动位置 / 卡片高度 / hover 状态全部原样，不会有任何跳动。
+   （也正因为如此，这里绝不能改成 display:none —— 页面会瞬间变短、滚动位置被浏览器钳掉。）
+
+   ⚠️ 但**不能照抄它的「隐藏所有 <div>」**：本站的背景层 `.bg` 本身就是个 div，
+      那样会把背景一起隐藏掉 —— 而「看背景」的全部意义就是看背景。
+      （GALBase 的背景是 `<ul class="cb-slideshow">`，不是 div，所以对他们恰好成立。）
+      这里改成在下面**显式列举**要隐藏的容器，改版时记得同步。
+   ⚠️ 第 18 轮：原先那套「右下角常驻坞」（`.dock` / `.dock__b` 与 dock.js）已**删除** ——
+      它的两个功能（看背景 / 回到顶部）现在都由底部 HUD 接管（hud.js），
+      用户已确认 HUD 这个方向成立。 */
+
+/* ---- 看背景模式：内容全部让开，只留背景与那几枚按钮 ----
+   #sky（星空画布）/ .toast（提示条）/ .lc（光变曲线弹层）也一并让开，
+   否则它们会孤零零地飘在照片上。`.hud` 也必须让开 —— 它是 fixed 的底部条，
+   不让开会浮在照片上（上一版这个坞就是因为整层让开才不碍事）。 */
+html.bg-only #sky,
+html.bg-only .topbar,
+html.bg-only .wrap,
+html.bg-only .footer,
+html.bg-only .toast,
+html.bg-only .lc,
+html.bg-only .hud { visibility: hidden; }
+/* ⚠️⚠️ **第 17 轮：bg-only 下必须给折条箭头留一条活路。**
+   用户报的 bug：「点击看背景后，**不能恢复**」。根因就在上面那一条 ——
+   `visibility: hidden` 把**整条 HUD 连同那枚「回到论坛」键**一起藏了，
+   而那枚键就住在 HUD 里 ⇒ **回头路被自己藏掉了**（只剩 Esc 能退，没人知道）。
+   ⇒ 现在 bg-only 下**只留折条上那枚箭头**：它是屏幕上唯一的出口，
+      点它展开就顺带退出看背景（逻辑见 hud.js 的 tgBtn 监听）。
+   ⚠️ `visibility` 是**可继承**属性，子元素写 `visible` 即可从隐藏的祖先里「救回来」✓
+      —— 用 `display` 就做不到（那会把整棵子树摘掉）。 */
+html.bg-only .hud__tg { visibility: visible; }
+html.bg-only .bg__wash { opacity: 0; }          /* 洗色层全撤 → 看到未经冲淡的原始 CG */
+
+/* 触屏没有 hover：推荐卡标题不能只在悬停时才出现，否则用户看到的是 5 张无字图 */
+@media (hover: none) {
+  .rec__veil { opacity: 1; }
+}
+
+/* 子版块名作为通往板块页的入口：继承标题色，hover 才加下划线。
+   压在封面上的那份（.sc__head--over）父级已把颜色设成白色，这里继承即可。 */
+.sc__go { color: inherit; }
+.sc__go:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ============ 主题切换按钮 ============ */
+.theme-tg {
+  position: relative; flex: none; overflow: hidden;
+  display: grid; place-items: center;
+  width: 36px; height: 36px; padding: 0;
+  border: 1.5px solid var(--c500); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--link); cursor: pointer;
+  transition: border-color .18s var(--ease), background .18s var(--ease), color .18s var(--ease);
+}
+.theme-tg:hover { background: var(--c200); border-color: var(--c700); }
+.theme-tg svg {
+  position: absolute; width: 17px; height: 17px;
+  fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform .5s var(--ease), opacity .32s var(--ease);
+}
+/* 亮色时露月亮（点了去夜间），暗色时露太阳；两枚图标各自转着换位 */
+.theme-tg__moon { transform: rotate(0deg) scale(1); opacity: 1; }
+.theme-tg__sun  { transform: rotate(-90deg) scale(.3); opacity: 0; }
+[data-theme="dark"] .theme-tg__moon { transform: rotate(90deg) scale(.3); opacity: 0; }
+[data-theme="dark"] .theme-tg__sun  { transform: rotate(0deg) scale(1); opacity: 1; }
+
+/* ============ 主题切换过渡：流星 + 夜色擦除 ============
+   一次编排，约 0.9s，不循环。reduced-motion 下 JS 根本不创建这层。 */
+.fx {
+  position: fixed; inset: 0; z-index: 200; pointer-events: none; overflow: hidden;
+  /* 流星配色随方向走：暗→亮时压在淡色拂晓幕上，白色流星根本看不见 */
+  --fx-m-head: #fff; --fx-m-mid: rgba(255,255,255,.62);
+  --fx-m-tail: rgba(255,255,255,0); --fx-m-glow: rgba(255,255,255,.9);
+}
+.fx--to-light {
+  --fx-m-head: #eab44e; --fx-m-mid: rgba(202,152,62,.55);
+  --fx-m-tail: rgba(190,140,60,0); --fx-m-glow: rgba(232,182,84,.85);
+}
+
+/* 暮色幕 —— 替掉原来的「clip-path 硬边 + 旧主题纯色铺满整屏」。三处不同，都是为了不刺眼：
+   1) 硬边 → 羽化：遮罩 alpha 从 150vmax 起渐隐到 200vmax。150vmax 保证任何视口从按钮
+      出发都盖满（对角 ≤ 1.15vmax），而边界过渡带有 50vmax 宽 —— 眼睛找不到那条线
+   2) 纯色整屏 → 暮色中间调：亮→暗走深靛蓝的黄昏、暗→亮走淡紫的拂晓；两侧都朝中间调走，
+      再也不会出现「整屏纯黑 / 整屏纯白」那一下
+   3) 瞬间遮盖 → 从按钮位置按 scale 长出：transition 的原点就是用户点的那个按钮
+   主题在 64%（幕已铺满）时才切，所以看不到那一帧的跳变；幕再淡出，露出新主题。
+   总时长 820ms。reduced-motion 下整段跳过，直接切。 */
+/* --fxr 用 @property 注册成 <length>，它才能被 CSS 动画插值 —— 这是「羽化边始终成比例」的关键：
+   遮罩过渡带宽度取 --fxr 的 38%，半径小的时候边窄、大的时候边宽，永远是一条柔和带。
+   ⚠️ 第一版把过渡带写成 150vmax→200vmax，看着像羽化，实际 150vmax ≈ 19.5 万 px，
+   远超任何视口 —— 等于遮罩完全没起作用，露出来的边界是元素盒子被 scale 之后的**直角硬边**。
+   是「暗→亮」那一帧把它抓出来的：「亮→暗」时硬边是深压深、对比太低，硬边检测器被蒙过去了。
+   所以两个方向都必须测，只测一个方向等于没测。 */
+/* --fxr 用 @property 注册成 <length>，它才能被 CSS 动画插值（不支持时退化成按帧跳，
+   最坏情况是「幕直接盖满再淡出」—— 仍然没有硬边，可以接受）。 */
+@property --fxr { syntax: '<length>'; initial-value: 0px; inherits: false; }
+
+/* 羽化直接用 background 的 radial-gradient 画，**不用 mask**。这一步走过两次弯路，都记在这里：
+   ① 第一版：mask 停靠点写 150vmax→200vmax，看着像羽化，其实 1vmax 只是视口的 1%，
+      150vmax≈19.5 万 px 远超任何视口 → 遮罩等于没生效，露出的是元素被 scale 后的直角硬边。
+   ② 第二版：把过渡带改成半径的百分比（--fxr 的 62%→100%）。半径一长，过渡带也被拉到几万 px，
+      在视口尺度上等于一条直线 —— 实测边界是一条 x 恒为 31 的竖线，跳变 130 个亮度单位。
+   现在的写法把过渡带钉成**绝对 340px**：calc(var(--fxr) - 340px) → var(--fxr)。
+   半径小的时候边就窄、大的时候边就宽，永远是一条 340px 的柔和带；而 --fxr 之外完全透明，
+   所以元素盒子自身的边界必然不可见 —— 结构上不可能再出现直线硬边。 */
+.fx__veil {
+  position: absolute; inset: 0;
+  --fxr: 0px;
+  animation: fxVeil 820ms cubic-bezier(.4, 0, .2, 1) forwards;
+}
+/* 暮色中间调：亮→暗走深靛蓝的黄昏、暗→亮走淡紫的拂晓。
+   两侧都朝中间调走，所以无论哪个方向都不会出现「整屏纯黑 / 整屏纯白」。 */
+.fx--to-dark .fx__veil {
+  background: radial-gradient(circle var(--fxr) at var(--wx, 100%) var(--wy, 0%),
+      rgba(14, 22, 46, 1) 0 calc(var(--fxr) - 340px),
+      rgba(30, 40, 78, .66) calc(var(--fxr) - 160px),
+      rgba(36, 48, 92, 0) var(--fxr));
+}
+.fx--to-light .fx__veil {
+  background: radial-gradient(circle var(--fxr) at var(--wx, 100%) var(--wy, 0%),
+      rgba(243, 240, 255, 1) 0 calc(var(--fxr) - 340px),
+      rgba(232, 236, 250, .7) calc(var(--fxr) - 160px),
+      rgba(230, 235, 250, 0) var(--fxr));
+}
+/* 半径故意前快后慢（20% 走完 30vmax、62% 才到 260vmax）：面积是半径的平方，
+   匀速生长看起来会像在加速。62% 时半径 3380px，远大于视口对角（1358px），保证那一刻盖得严。 */
+@keyframes fxVeil {
+  0%   { --fxr: 0px;    opacity: 0; }
+  10%  { opacity: 1; }
+  20%  { --fxr: 30vmax; }
+  40%  { --fxr: 95vmax; }
+  62%  { --fxr: 260vmax; opacity: 1; }
+  72%  { opacity: 1; }          /* 撑住不透明到 72%，切主题在 66% —— 那一帧必须被完全盖住 */
+  100% { --fxr: 260vmax; opacity: 0; }
+}
+/* 流星：头部在左端（亮到白的渐变），尾巴向右渐隐；整体逆时针倾斜 → 指向左下，
+   translate 也往左下 —— 头领尾随，方向才自洽。 */
+.fx__meteor {
+  position: absolute; left: var(--mx, 80%); top: var(--my, 6%);
+  width: var(--ml, 180px); height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--fx-m-head), var(--fx-m-mid) 30%, var(--fx-m-tail) 100%);
+  filter: drop-shadow(0 0 6px var(--fx-m-glow));
+  transform-origin: 0% 50%; opacity: 0;
+  animation: fxMeteor 620ms cubic-bezier(.25, .7, .35, 1) var(--md, 0ms) forwards;
+}
+@keyframes fxMeteor {
+  0%   { opacity: 0; transform: rotate(var(--ma, -22deg)) translate3d(0, 0, 0) scaleX(.25); }
+  16%  { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--ma, -22deg)) translate3d(-44vw, 32vh, 0) scaleX(1); }
+}
+
+/* ==================================================================
+   底部 HUD（galgame 功能菜单）+ 星位导航 + 音乐播放器
+   ------------------------------------------------------------------
+   这一批全部写在「响应式」那一段**之前** —— 基础规则若追加到文件尾部，
+   会静默压掉窄屏还原（媒体查询不提升特异性，只靠源码顺序）。
+   材料纪律：**蓝＝面，金＝线/光/实心小图**；三个颜色只从 --hud-* / --y* / --c* 取，
+   不在组件规则里写新的色值（深色语境除外，见 .hud__band 的说明）。
+   ================================================================== */
+
+/* ---- 星野表面：满版 / 只要纹理 / 浅色版 ----
+   配方原样来自 `.op__poster::before`（本文件上方）。 */
+.sky { background-image: var(--hud-stars), var(--hud-cloud), var(--hud-deep); }
+/* 只要纹理，**不带深蓝底** —— 压在 HUD 的三段 fade 上，带底会二次盖住画面 */
+.sky--tex { background-image: var(--hud-stars), var(--hud-cloud); }
+
+/* ---- 金色渐变名牌：`background-clip:text` 的金字 + `filter` 描边链 + 故意歪 1° ----
+   ⚠️ 描边**必须**用 `filter: drop-shadow`，不能用 `text-shadow`。
+   理由可推导：`text-shadow` 的绘制次序是「背景 → 阴影 → 文字」，而 `background-clip:text`
+   的金色**就是背景**、文字又是 `color:transparent`（什么都不画）⇒ 那圈深色阴影正好盖在金色
+   字面上（实测：名牌曾渲染成一坨黑，探针却全绿）。`filter` 是对元素**渲染结果**取 alpha、
+   画在它**后面**，永远盖不住字面。也不能用 `::before + z-index:-1` —— 这个元素有
+   `transform`，transform 会创建层叠上下文，负 z 伪元素会被关在里面画在父级背景之上。
+   偏移用 `em` 写 ⇒ 15px 与 23px 两种字号都成立。 */
+.nameplate {
+  position: relative; display: inline-block;
+  /* ⚠️ `flex:none` + `nowrap` 不能少：它是 flex 子项，默认会被压到 min-content，
+     而中文的 min-content 是**一个字** ⇒ 一字一行（实测宽 24.8px、高 114px）。 */
+  flex: none; white-space: nowrap;
+  /* ⚠️ 行高写死：`normal` 跟着字体度量走，而「星轨研讨室」里有 Zen Maru Gothic 缺的字、
+     会落到 ZCOOL KuaiLe —— 两个圆体度量不同，行盒高度会差几像素。 */
+  line-height: 1.2;
+  /* ⚠️ 800 → 600，字距 .07em → .04em：用户判词「人名那里加粗是不是太狠了，有点烦人」。
+     金色渐变字 + 描边本身已经把重量感拉满，字重再叠 800 就糊成一坨厚块。 */
+  font-family: var(--font-round); font-weight: 600; letter-spacing: .04em;
+  transform: rotate(-1deg); transform-origin: 0 60%;
+  color: transparent;
+  background: var(--hud-name-bg);
+  -webkit-background-clip: text; background-clip: text;
+  filter:
+    drop-shadow(.055em 0 0 var(--hud-outline)) drop-shadow(-.055em 0 0 var(--hud-outline))
+    drop-shadow(0 .055em 0 var(--hud-outline)) drop-shadow(0 -.055em 0 var(--hud-outline))
+    drop-shadow(.04em .04em 0 var(--hud-outline)) drop-shadow(-.04em -.04em 0 var(--hud-outline))
+    drop-shadow(.04em -.04em 0 var(--hud-outline)) drop-shadow(-.04em .04em 0 var(--hud-outline))
+    drop-shadow(0 .1em .24em var(--hud-shadow));
+}
+/* 台词：8 向硬描边（压在 CG 上靠描边换可读性，不靠底板）—— 颜色**随主题翻**：
+   深底＝白字 + 深描边；浅底＝墨蓝字 + 白描边。这里用 `text-shadow` 是**安全**的 ——
+   它不是 `background-clip:text` 的字，没有金色要盖。 */
+.subline {
+  font-family: var(--font-round); font-weight: 500; letter-spacing: .02em;
+  color: var(--hud-ink);
+  text-shadow:
+    1.5px 0 0 var(--hud-outline), -1.5px 0 0 var(--hud-outline), 0 1.5px 0 var(--hud-outline), 0 -1.5px 0 var(--hud-outline),
+    1px 1px 0 var(--hud-outline), -1px -1px 0 var(--hud-outline), 1px -1px 0 var(--hud-outline), -1px 1px 0 var(--hud-outline),
+    2px 2px 5px var(--hud-shadow);
+}
+/* 星等小徽章（对话里的「2.3 等」）。⚠️ 字号 12px 是站点硬规则的下限，
+   而「2.3 等」**不是**「单字标签」、不受豁免 —— 所以不能比 12px 小。
+   `flex:none` + `nowrap` + svg 显式尺寸：三者缺一个它就会被压成两行、把行高顶起来。 */
+.magchip { display: inline-flex; align-items: center; gap: 3px; flex: none; white-space: nowrap;
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.35;
+  color: var(--hud-gold-s); border: 1.5px solid var(--hud-gold-w); border-radius: 3px; padding: 0 6px;
+  background: var(--hud-plate); }
+.magchip svg { width: 12px; height: 12px; fill: var(--hud-gold-s);
+  filter: drop-shadow(0 0 calc(2px + var(--glowAmt, .7) * 5px) var(--hud-glow)); }
+/* 封面母题当角饰：同心环 + 十字金芒（同 `.rec__cover::after` 与那 38 个 covers/*.svg）。
+   被父级的 `overflow:hidden` 裁成左上角一段弧 —— 就是要这个效果。 */
+.orn { position: absolute; right: -34px; top: -34px; width: 128px; height: 128px; pointer-events: none; opacity: .8;
+  background-image:
+    radial-gradient(circle, transparent 0 26%, rgba(246, 216, 137, .45) 26.4% 27%, transparent 27.4%),
+    radial-gradient(circle, transparent 0 38%, rgba(246, 216, 137, .30) 38.3% 39%, transparent 39.3%),
+    radial-gradient(circle, transparent 0 50%, rgba(207, 224, 255, .22) 50.3% 51%, transparent 51.3%); }
+.orn::before { content: ''; position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(246, 216, 137, .55) 0 1px, transparent 1px),
+    linear-gradient(90deg, rgba(246, 216, 137, .55) 0 1px, transparent 1px);
+  background-size: 100% 62%, 62% 100%; background-position: 0 50%, 50% 0; background-repeat: no-repeat; }
+
+/* ---- 顶栏：玻璃配方**保持站点原样**，这里只加「退场」这一件事 ----
+   玻璃四件套（`background: var(--topbar-bg)` / `backdrop-filter` / `-webkit-backdrop-filter` /
+   `border-bottom: 2px solid var(--c400)`）本来就在上面那条 `.topbar` 基础规则里，
+   这一轮**不复制、不覆盖**它 —— 上一版我用 `background: transparent; border-bottom: 0`
+   把它盖成了「不铺底」，那才是要撤销的东西。
+   ⚠️ 星位 + 发丝线那套现在**长在玻璃上**，所以导航文字回到了站点的主题令牌：
+      白字 + 8 向描边是给「不铺底、压在照片上」设计的，铺了底再挂描边就是双重噪声，
+      而且在亮色主题下会变成「白字描黑边压在浅色毛玻璃上」。 */
+/* ⚠️ 基准态＝显示，用**快**的时长；隐藏态在下面单独覆盖成**慢**的。
+   「回来的响应感」比「离开的优雅」更要紧 —— 所以回 200ms、收 300ms。 */
+.topbar { transition: transform .2s var(--ease), opacity .2s var(--ease), visibility 0s; }
+/* ---- 向下滚动时的退场：「星幕收拢」----
+   ⚠️ 用 `transform: translateY(-100%)` 而不是改高度/display：顶栏是 `sticky`，
+      transform 不参与布局 ⇒ **页面一点不跳**（改高度会抖，改 display 会掉滚动位置）。
+   ⚠️ `visibility` 要一起切、且延时到滑完 —— 否则隐形的顶栏会**吃掉顶部的点击**，
+      还会留在 Tab 顺序里（和 HUD 收起态是同一条教训）。 */
+html.nav-hide .topbar { transform: translateY(-100%); opacity: 0; visibility: hidden; pointer-events: none;
+  transition: transform .3s var(--ease), opacity .3s var(--ease), visibility 0s linear .3s; }
+/* RM 下不滑不淡，直接切换 */
+@media (prefers-reduced-motion: reduce) { .topbar { transition: none; } }
+.brand__mark { color: var(--hud-void); background: linear-gradient(150deg, var(--y400), var(--y600));
+  border: 2px solid var(--hud-edge); border-radius: 5px; box-shadow: 2px 2px 0 rgba(8, 15, 34, .5); }
+.brand__mark svg { width: 17px; height: 17px; fill: currentColor; stroke: none; }
+.brand__text strong { font-family: var(--font-round); letter-spacing: .1em; color: var(--ink-deep); }
+/* ⚠️ 品牌英文用 `--y-text`（站点的「加深过的金色，专供小字与图标」），不是 `--y500`：
+   顶栏是毛玻璃面，`--y500` 压在它上面只有约 1.6:1。`--y-page` 是给**裸页面底**用的，
+   这里是「压在半透面上」，归 `--y-text` 管。 */
+.brand__text em { color: var(--y-text); }
+.nav { gap: 16px; align-items: flex-end; position: relative; padding-bottom: 6px; margin-left: 8px; }
+/* 那条金线：横向实→渐隐，并「穿」在每个节点的下面。
+   颜色用 `--y-text`（`--y500` 在毛玻璃上 1.6:1 看不见）；它同时**兼作退场动画** ——
+   整条收起时它先从右往左缩掉（见 html.nav-hide），于是退场读作「幕收起来」而不是「板滑走」。 */
+.nav::after { content: ''; position: absolute; left: 6px; right: 0; bottom: 0; height: 1.5px;
+  background: linear-gradient(90deg, var(--y-text), transparent 100%);
+  transition: transform .3s var(--ease); transform-origin: 100% 50%; }
+html.nav-hide .nav::after { transform: scaleX(0); }
+.nav a { position: relative; padding: 14px 0 0; border-radius: 0; background: none;
+  font-family: var(--font-round); font-size: 13.5px; font-weight: 500; letter-spacing: .04em;
+  color: var(--ink-soft); transition: color .16s var(--ease); }
+.nav a:hover { color: var(--link); background: none; }
+/* 十字星点：站里 `.orbit` 的节点形状，矢量描边不随缩放变粗 */
+.nav a i { position: absolute; left: 50%; top: 1px; width: 11px; height: 11px; margin-left: -5.5px;
+  color: var(--y-text); opacity: .85; transition: opacity .18s var(--ease), transform .18s var(--ease); }
+.nav a i svg { width: 11px; height: 11px; overflow: visible; }
+.nav a i svg path { stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; fill: none;
+  vector-effect: non-scaling-stroke; }
+.nav a:hover i { opacity: 1; transform: scale(1.25); }
+/* 当前页那颗换成**实心四点星** + 参数驱动辉光（站里 `.mag` 的 --glowAmt 手法）。
+   辉光用 `currentColor` ⇒ 跟着主题走，不必写死颜色。 */
+.nav a[aria-current="page"] { color: var(--link); font-weight: 700; background: none; }
+.nav a[aria-current="page"] i { width: 17px; height: 17px; margin-left: -8.5px; top: -2px; color: var(--y-text);
+  opacity: 1; filter: drop-shadow(0 0 calc(2px + var(--glowAmt, .7) * 5px) currentColor); }
+.nav a[aria-current="page"] i svg { width: 17px; height: 17px; }
+
+/* ==================================================================
+   底部 HUD
+   三条结构纪律：
+     · `.hud` 容器自己 `pointer-events:none`，只有交互层 auto（否则整层吃点击）
+     · 定高的 flex 子项一律 `flex:none`（否则窄屏被压扁、定高失效）
+     · 无限动画（盘指针、唱片）RM 下显式停，且**基础态不挂 animation**
+   ================================================================== */
+.hud { position: fixed; left: 0; right: 0; bottom: 0; z-index: 100; pointer-events: none;
+  /* ── 立绘框：**高度 / 形状** 两个数（宽是从它们算出来的，不用单独写）──
+     ⚠️ **形状（`--pt-ar`）是框自己的事，与素材无关** —— 换任何比例的头像，框都不变。
+        以后想要更「半身」一点，只改这一个数（比如 `--pt-ar: .82`）。
+     ⚠️ **170 是「比对话框低一点」的落法**：整个模块高 93+94 = **187**，立绘 170 ⇒
+        它的顶比模块顶低 17px，不再冒出去。 */
+  --pt-h: 170px; --pt-ar: 1; --pt-w: calc(var(--pt-h) * var(--pt-ar)); --pt-gap: 14px;
+  /* 底部锚定的 flex 列：DOM 顺序＝视觉顺序，「谁给谁让位」由布局自动完成。
+     ⚠️ 不要 `justify-content: flex-end` —— 高度是 auto，没有多余空间可分配，它是**空操作**。
+     ⚠️ 三个定高子项一律 `flex: none`（flex 子项默认被压到 min-content，memories 2.54）。 */
+  display: flex; flex-direction: column; }
+/* 层叠：内容(1) < .hud(100) < .toast(120) < .fx(200) —— toast 要浮在展开的条之上
+   （它是临时且重要的），收起态的 24px 与 toast 的 bottom:26px 刚好错开。 */
+
+/* ── 模块的**两排**（用户本轮的定论，写在最前面）──
+   用户原话：「**文本框这个模块是包含功能栏**，不是功能栏和文本框分别是 2 个不同的模块，
+   **它两是一个模块**」+「右上角下拉控制的是**整个模块**的下拉，而不是单独的文本区域」。
+   所以自上而下只有两排，**同属一个模块**：
+       ① 文本框 `.hud__body` —— 模块的上排，**自带折叠箭头**（右上角，见 `.hud__tg`）
+       ② 功能栏 `.hud__ui`   —— 模块的下排，一整排从左到右：
+                                三簇功能键 → 星等时钟 → 歌单胶囊 → 锁
+       ③ 屏幕底边
+   ⚠️ **折叠是整条模块一起折**（那枚箭头管两排）：`.hud.is-fold` 一挂，
+      ① 收到 `--box-min`、② 收到 0 ⇒ 折条上只剩箭头。
+   ⚠️ **② 不跟 hover**（用户：「默认展开、不跟 hover」）—— 上一版的 `is-ui` 类、
+      「鼠标移到底部才升起」、`--stack` 让位量**全部删掉了**。别照第三／四轮的写法改回去。
+   ⚠️ **星等时钟在右侧、锁在最右**（用户：「星等时钟放到右侧，回到最初版那个位置」+
+      「锁要放在功能栏的后侧…锁要放在右侧」）。靠 `.keys { margin-right: auto }` 把它们顶到右边。
+   ⚠️ **DOM 顺序就是视觉顺序**：`.hud` 是一条「底部锚定的 flex 列」，「谁在上面」由布局自动完成 ——
+      不再手算任何偏移。前两轮就是死在手算偏移上（同一个数写在两三个地方，一反转就全错，memories 2.76）。
+   ⚠️ **为什么这里可以用 `height` 做动画**（§10 写着「改高度会抖」）：那条是针对 `sticky` 的
+      `.topbar` 写的 —— 它在文档流里，改高度会推动页面。`.hud` 是 `position: fixed`，
+      **不参与文档流**，改它自己的高度不会移动页面任何东西。两者理由不同，**别照 §10 改回去**。
+   ⚠️ **不给 `.hud` 加 `overflow:`** —— 那会同时剪掉 `.hud__vec` 的 `-30px` 顶部渐隐（变硬边）
+      和 `.pl__panel`（它靠溢出上边界显示，`bottom: calc(100% + 10px)`）。要裁只裁**可折叠那排自己**。 */
+
+/* ══ 底带：**一条长渐变**，不是一块平涂 ══
+   ⚠️ 这是用户第八轮的定论，原话：「**我没让你设计一个新的浅色，我要很低调，透明度很高的那种**」
+      —— 并直接贴了旧版 `.hud__band` 的 CSS。所以配方「原样搬回来」：
+      · **上半截基本是透的**（74% 处只剩 .34、顶上全透明）⇒ 画面从带子里透出来，
+        台词靠 8 向描边换可读性，**不靠底板**；
+      · **只有最底下那一截是实的**（0% 处 .94）⇒ 键那一排压得住，不跟页面文字交错。
+   ⚠️ 第七轮我把它做成了 `--hud-veil(.80) / --hud-veil-solid(.96)` 的**平涂 + 30px 收盘**：
+      整条盖死 ⇒ 用户判词「大黑」「功能栏的背景都和整个文本框背景叠加了，更深了颜色」。
+      **别再改回平涂**，也别按主题换成浅色（那是同一轮被推翻的做法）。
+   ⚠️ 高度**不手算**：`inset` 撑满容器，由渐变自己负责「往上透出去」—— 以后再加一排也不用改公式。
+   ⚠️ 用 `--hud-stars/cloud` 纹理与白色水印要记得它们**还在继续提亮**背景 —— 算对比度要留余量。 */
+.hud__vec { position: absolute; left: 0; right: 0; bottom: 0; top: 0; z-index: 1;
+  pointer-events: none;
+  background-image: var(--hud-band); }
+
+/* ── ① 文本框：**自带折叠**（右上角箭头），和 ② 一起被折条收走 ──
+   ⚠️ padding 必须放在**内层 wrapper**（`.hud__in`）：`* { box-sizing: border-box }` 下
+      `height:0` 只压内容盒，**边框盒的 used 值 = padding 之和** ⇒ 折叠后仍残留 13px，
+      而那 13px 会把箭头裁掉 ⇒ **键盘入口消失**（「入口没了」这已经是第三次）。
+      外层无 padding 才真能收干净。
+   ⚠️ 内层用「绝对定位 + 显式 `var(--box-h)`」而**不是** `height:100%`，一条治三个病：
+      · **量高度与折叠状态解耦**。第四轮用 `height:100%`：折叠态一旦被持久化，`syncH()`
+        就在折叠态下量 —— 内层被压成 28px，`--box-h` 被量小，展开时台词被切。
+      · 内层被钉在父盒**底边**、父盒从底边向上生长 ⇒ 折出来的是「**从顶部盖下来**」。
+      · 和第 ③ 层 `.hud__ui > .hud__in`（本来就是 `height: var(--ui-h)`）写法一致。
+   ⚠️ 「不留半截字」不靠 `overflow:hidden` —— 它只裁，内容仍会露半截（第四轮那个 bug）。
+      收干净靠 `.is-fold` 下把内层 `opacity` 打到 0；移出 Tab 顺序靠 `inert`（hud.js 切）。
+      `height:0` 本身做不到后者，`opacity` 也做不到后者 —— 两者各管一头，不能互替。 */
+.hud__body { position: relative; flex: none; z-index: 6; contain: layout;
+  height: var(--box-h, 106px); overflow: hidden; pointer-events: auto;
+  /* （第七轮这里加过一条 `inset 0 2px 0 var(--c400)` 的顶边发丝线，配浅玻璃用的 ——
+      第八轮底带改回长渐变后它**多余且显脏**，删掉。带子往上透出去，本就不该有收边。） */
+  transition: height .24s var(--ease); }
+/* ⚠️ **第 15 轮：功能栏搬走了，这一层回到「只有台词」**。
+   用户把「文本框」这个词**用来指整个大模块**（文本显示 + 功能栏 + 星等时钟 + 歌单胶囊），
+   功能栏该和**星等时钟同一行**，不是缩进台词这一小块里 —— 这一条纠正了第 12/13 轮的误读。
+   ⚠️ 与它配套的 `natural()` 第 15 轮改成了**包围盒测量**（_hudfix.js 与 hud.js 里都有长注释）：
+      前三版分别是「一律取 max」「按方向取 max/求和」，都在**会换行的 row** 上失手。
+   ⚠️ `padding-top: 28px` 仍然给折条箭头让位（它住在 right:6px / top:1px）。 */
+/* ⚠️ 2026-10-10 从**列**改成**行**：最左边是立绘位，右边是「名牌行 + 台词」。
+   用户：「跟 galgame 那套系统一样，最左边显示人物头像」。
+   同时把整条压矮：内边距 28/13 → **8/10**（顶上那 28px 原本是给折条箭头留的**空带**，
+   现在名牌行搬进去了，箭头靠 `.hud__nm` 的 padding-right 让开，不再需要一整条空带）。
+   实测 1400 下 122 → 93px（−24%）。 */
+/* ⚠️ 2026-10-10 从**列**改成**行**；2026-10-11 立绘位**搬出这一层**（成了 `.hud` 的直接子元素，
+   因为它要跟整只框一起贴在屏幕左下角，而本层带 `overflow: hidden`）。所以这一层现在只剩内容一栏，
+   而 `padding-left` 必须**让开立绘那块地** —— 它由 `--pt-w + --pt-gap` 算出来，不写死。
+   ⚠️ 这也正是「框固定形状」顺带解决的一件事：**让位宽度不再随每个用户的头像变**。 */
+.hud__body > .hud__in { position: absolute; left: 0; right: 0; bottom: 0;
+  height: var(--box-h, 106px); display: flex; flex-direction: row; align-items: center;
+  padding: 8px 20px 10px calc(var(--pt-w, 0px) + var(--pt-gap)); transition: opacity .2s var(--ease); }
+/* 折叠态：整条底部大板块收成一条 28px 的折条（箭头住在这条上），内容**整体隐掉 + 不可聚焦**。
+   ⚠️ 用 `opacity` 而**不是** `visibility`：`visibility` 的「延时切换」（等动画走完再隐藏）
+      在「离开→又紧接着进入」的往返里会**滞后**（类已经加回来了、计算值还是 hidden），
+      第四轮实测就是这样造出两条随机失败。`opacity` 是连续属性，没有离散状态可滞后。 */
+.hud.is-fold .hud__body { height: var(--box-min, 28px); }
+.hud.is-fold .hud__body > .hud__in { opacity: 0; }
+/* 折叠箭头：**住在裁剪区之外**（`.hud__body` 的直接子元素，不在 `.hud__in` 里）——
+   否则折叠后会被裁剪边吃掉一部分，命中去缩水甚至不可见。
+   它是这个 HUD 里**唯一常驻可聚焦的入口**（台词按钮一折就不可聚焦），职责见 hud.js。 */
+.hud__tg { position: absolute; right: 6px; top: 1px; z-index: 2;
+  width: 30px; height: 26px; display: grid; place-items: center;
+  padding: 0; cursor: pointer; font: inherit; background: none; border: 0;
+  color: var(--hud-gold-s); transition: color .16s var(--ease), filter .16s var(--ease); }
+.hud__tg svg { width: 15px; height: 15px; transform: rotate(180deg);
+  transition: transform .24s var(--ease); }
+.hud.is-fold .hud__tg svg { transform: none; }   /* 折起来 ⇒ 箭头朝下 ＝「点我展开」 */
+.hud__tg:hover, .hud__tg:focus-visible { color: var(--hud-ink);
+  filter: drop-shadow(0 0 5px var(--hud-gold-w)); }
+
+/* ── ② 功能栏：**本模块的下排**，一整排（用户：「它两是一个模块」）──
+   从左到右：三簇功能键 → 星等时钟 → 歌单胶囊 → 锁。
+   ⚠️ 星等时钟原先是**单独一层**（`.hud__stat`）。本轮用户要求「放到右侧，回到最初版那个位置」，
+      所以那一层**整个删掉**了，仪器盘和歌单胶囊都搬进这一排来 —— 现在全站只有两排。
+   ⚠️ **不跟 hover**：常态就是 `var(--ui-h)`，由 CSS 直接给（用户：「默认展开、不跟 hover」）。
+      上一版的 `height: 0 ↔ var(--ui-h)` 开合、内容 `translateY(100%)` 的「升起」、`is-ui` 类
+      全部删掉 —— 那些机制的前提是「功能栏按需升起」，而这个前提已经不存在。
+   ⚠️ `overflow` 必须**常态 visible**：歌单面板 `.pl__panel` 靠 `.pl{position:relative}` +
+      `bottom: calc(100% + 10px)` 悬在这一排**上边界之外**，常态裁掉它 = 面板天天被剪一角。
+      只在**折叠态**开 `overflow:hidden`（那时 `setBox` 会先把面板关掉）。
+      `overflow` 不可过渡、切换瞬时 —— 正好：折的时候要在动画**开始**就进入裁剪。
+   ⚠️ `height:0` 移不出 Tab 顺序（可编程滚动的盒子会把聚焦后代滚进视野）⇒ 折叠时给它挂
+      **`inert`**（hud.js 切），而不是 `visibility:hidden` —— 后者在往返切换时会滞后。
+   ⚠️ padding 必须在**内层**：`border-box` 下 `height:0` 的 used 值 = padding 之和 ⇒ 留残高。 */
+.hud__ui { position: relative; flex: none; z-index: 5; contain: layout; overflow: visible;
+  height: var(--ui-h, 94px); pointer-events: auto;
+  transition: height .24s var(--ease); }
+/* ⚠️ **第 15 轮**：下排现在是「**功能栏 + 星等时钟 + 歌单胶囊**」（锁在功能栏里）。
+   用户第 14 轮选的是「**功能栏居中，时钟与胶囊在右**」。
+   ⚠️ 于是**去掉 `justify-content: flex-end`**（那是第 12 轮键搬走之后用来防整排塌左的）——
+      现在由 `.keys` 自己那对 `auto` 外边距来分配留白，见下面那条。
+   ⚠️ `flex-wrap: wrap` + `align-content: flex-end`：窄屏一行放不下时（功能栏本身会换行成两排）
+      **让歌单胶囊掉到第二行**，而不是横向溢出。`row-gap: 10px` 给换行后的两行留缝。
+      ⚠️ 这一条正是 `natural()` 必须改成**包围盒**的原因 —— 换行后的真实高度
+         「取 max」与「求和」**都不对**。 */
+/* ⚠️ 用户第 15 轮补正：「**还是放正中间吧，偏左也不太好看**」——
+      于是功能栏**脱离文档流**、用 `left: 50% + translateX(-50%)` **绝对居中**：
+      在流里做「居中」只能是在**剩余空间**里居中（= 偏左），那正是用户嫌的那个位置。
+      ⚠️ 既然它脱了流，右边那组就得靠**这层**的 `justify-content: flex-end` 兜到右边去 ——
+          不加的话仪器盘与胶囊会跑到整排的**左边**来。
+      ⚠️ 窄屏另有一套（≤900 退回流式），见下面的媒体查询：绝对居中在窄屏会**撞上右边那组**。 */
+.hud__ui > .hud__in { position: absolute; left: 0; right: 0; bottom: 0;
+  height: var(--ui-h, 94px); display: flex; align-items: flex-end; align-content: flex-end;
+  justify-content: flex-end; flex-wrap: wrap; gap: 10px 16px;
+  padding: 0 20px 10px; transition: opacity .2s var(--ease); }
+.hud.is-fold .hud__ui { height: 0; overflow: hidden; }
+.hud.is-fold .hud__ui > .hud__in { opacity: 0; }
+/* ⚠️ 面板打开时，**功能栏那一排要抬到文本框之上**（`.hud__ui` 是 z5、`.hud__body` 是 z6）。
+   否则面板往上长的时候会被文本框压住 —— 宽屏看不出来（面板在右侧、台词在左侧），
+   窄屏面板铺满整宽时**台词就直接印在面板上**（375 下实测）。
+   抬整排不影响别的：两排在竖直方向本来就不重叠，这一下只管住面板与文本框的先后。
+   ⚠️ 必须在 `.hud__ui` 上抬，不能在 `.pl__panel` 上写 z-index —— `contain: layout` 让
+      `.hud__ui` 自成层叠上下文，面板的 z-index 出不了那一层。 */
+.hud.is-panel .hud__ui { z-index: 7; }
+
+/* ══════════════ 观测证（作者档案）—— 挂在**整个模块之上**的一口箱子（2026-10-10）══════════════
+   用户：「我们不是有独特的 GAL 聊天框系统吗？作者信息之类的，能不能放在那里？」
+   galgame 的对话框回答的就是「谁在说话」⇒ 点**说话人的名字**看他的档案，这才是角色卡的位置。
+   配方**逐字照抄歌单面板 `.pl__panel`**（星野底 + 2px 描边 + 4px 硬投影）——
+   它不是一块新表面，就是站里那口箱子（§18.4 的原话）。
+   ⚠️ 挂在 `.hud` 上（**不是** `.hud__body` 里）：那一层带 `overflow: hidden`（折叠要裁），卡片会被剪掉。
+   ⚠️ 绝对定位 ⇒ `natural()` 两处量高**永远看不见它** ⇒ `--box-h` / `--ui-h` 开关前后逐字相同
+      —— 这是「整条框不随开合上下跳」的守卫，别改成参与布局。
+   ⚠️ **不用** `left: 50% + translateX(-50%)` 居中（§2.119）：绝对定位下可用收缩宽度会被砍掉一半。
+      改成左边缘与名牌对齐（`left: 20px` ＝ `.hud__body > .hud__in` 的 padding-left），
+      读起来就是「从名字条长出来」。
+   ⚠️ 与歌单面板**共用条上方那一块地** ⇒ 至多开一个（互斥写在 hud.js 的 setCard / setPanel 里）。
+      它**不需要**像 `.is-panel` 那样抬 `.hud__ui` —— 它是 `.hud` 的直接子元素，z 高于 `.hud__body`(6)。 */
+.hud__card { position: absolute; left: 20px; bottom: calc(100% + 10px); z-index: 8;
+  width: min(560px, calc(100% - 40px));
+  padding: 13px 16px 15px; border-radius: 5px; overflow: hidden;
+  background-image: var(--hud-stars), var(--hud-cloud), var(--hud-deep);
+  border: 2px solid var(--hud-edge); box-shadow: 4px 4px 0 var(--hud-shadow);
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: auto; color: var(--hud-ink); }
+/* ⚠️ `[hidden]` 必须显式写：UA 那条 `display:none` 的优先级低于 `.hud__card` 的 `display:flex`
+   ⇒ 不写这一条，`hidden` 形同虚设（同一个坑 `.pl__panel[hidden]` 上已经踩过）。 */
+.hud__card[hidden] { display: none; }
+
+.hud__card__hd { display: flex; align-items: center; gap: 10px; min-width: 0;
+  padding-bottom: 9px; border-bottom: 1px dashed var(--hud-gold-w); }
+.hud__card__nm { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.hud__card__nm b { font-family: var(--font-display); font-size: 15px; font-weight: 700; }
+.hud__card__nm i { font-style: normal; font-size: 11.5px; color: var(--hud-ink-soft); }
+.hud__card__seal { width: 18px; height: 18px; margin-left: auto; flex: none;
+  fill: var(--hud-gold-s); opacity: .8; }
+
+/* ⚠️ 字段做成**内容自适应的簇**、簇之间换行 —— 与头部那轮「留白太多」的修法同一个道理：
+   短标签 + 短值铺在满宽容器里，每一行只会用到 6%~32% 的宽度，右边全是死的。 */
+.hud__card__rows { display: flex; flex-wrap: wrap; gap: 3px 16px; margin: 0; }
+.hud__card__r { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.hud__card__r dt { flex: none; font-size: 11.5px; color: var(--hud-ink-soft); white-space: nowrap; }
+.hud__card__r dd { margin: 0; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.hud__card__k { margin: 0; font-size: 11px; color: var(--hud-ink-soft); letter-spacing: .04em; }
+/* 标签与它的值要贴在一起读（卡片本身有 8px 的 flex gap，那是**块与块**之间的呼吸） */
+.hud__card__pair { display: flex; flex-direction: column; gap: 3px; }
+.hud__card__sign { margin: 0; font-size: 12.5px; line-height: 1.65; }
+.hud__card__foot { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 16px;
+  padding-top: 9px; border-top: 1px dashed var(--hud-gold-w); }
+.hud__card__foot > * { min-width: 0; }
+.hud__pics { display: flex; gap: 6px; }
+.hud__pic { flex: none; width: 46px; aspect-ratio: 4 / 3; border-radius: 4px;
+  border: 1px solid var(--hud-ice-w); }
+.hud__clist { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.hud__clist li { font-size: 12px; line-height: 1.5; }
+.hud__clist li::before { content: "·"; margin-right: 6px; color: var(--hud-gold-s); }
+
+/* ── 名牌按钮：**帖内页专有**（首页 / 板块页名牌仍是纯文本，样式与今天逐字相同）──
+   galgame 里点角色名看角色卡，所以它得**看得出能按**：hover 与展开态给一道金细边 + 极淡金底
+   （与 `.key` 的 hover 同一套语汇，不是新发明）。外形沿用名牌本身，不另造一枚按钮。 */
+.hud__who { display: flex; align-items: center; gap: 10px; flex: none;
+  /* ⚠️ 上下内边距为 **0**：名牌那一行的高度直接决定整条框的高度，
+     2px 的上下留白就是 4px 的框高（本轮实测 101 → 97 就是这一条）。
+     hover 圈靠**常驻的 1px 透明边**做，切换的是颜色不是尺寸 ⇒ 悬停不会让框长高。 */
+  margin: 0; padding: 0 8px 0 3px; cursor: pointer; font: inherit; text-align: left;
+  background: none; border: 1px solid transparent; border-radius: var(--r-pill); color: inherit;
+  transition: border-color .16s var(--ease), background .16s var(--ease); }
+.hud__who:hover, .hud__who[aria-expanded="true"] {
+  border-color: var(--hud-gold-s); background: var(--hud-gold-tint); }
+.hud__who:focus-visible { outline: 2px solid var(--hud-gold-s); outline-offset: 2px; }
+/* ⚠️ `.hud__av--lg`（卡片抬头那枚 40px 头像盘）**已删**（2026-10-10）。
+   它和名牌行里那枚 26px 的 `.av hud__av` 都被**立绘位**（`.hud__pt`）取代了 ——
+   站里没有人物素材，现在两处都走「img 盖在首字色盘上」的同一套插槽。
+   （`.hud__av` 本来没有自己的规则，只是借 `.av` 的 26px；现在连那个类名也不生成了。） */
+
+/* RM 下不滑不裁、直接到位 —— 显式写全，**不靠全局 `.01ms` 兜底**（§10 与现有 RM 块的纪律）。
+   ⚠️ 折叠态的规则（`.hud.is-fold …`，特异性 0,3,0）**没有**写 `transition`，所以列
+      `.hud__body` / `.hud__ui`（0,1,0）就够了 —— 没必要再像上一版那样补一条 `.hud.is-ui …`。
+      但如果以后有人给 `.is-fold` 那几条加上 `transition`，**必须**同步加进这里。 */
+@media (prefers-reduced-motion: reduce) {
+  .hud__body, .hud__body > .hud__in, .hud__ui, .hud__ui > .hud__in,
+  .hud__pt, .hud__tg svg { transition: none; }
+}
+
+/* 星野纹理：纹理本身由站点的 `.sky--tex` 给（「只要纹理、不带深蓝底」那个变体）。
+   ⚠️ 底带的渐隐已经写在 `.hud__vec` 上了 —— 这里**只管纹理**，别再压一层带深蓝 linear 的星野，
+      那等于又盖一层画面。 */
+/* 星野纹理：纹理本身由站点的 `.sky--tex` 给（「只要纹理、不带深蓝底」那个变体）。
+   ⚠️ 底带的渐隐已经写在 `.hud__vec` 上了 —— 这里**只管纹理**，别再压一层带深蓝 linear 的星野，
+      那等于又盖一层画面。
+   ⚠️ 透明度**随主题翻转**（`--hud-tex-o`）：白色星点在浅玻璃上只会显脏，压到 .07。 */
+.hud__tex { position: absolute; inset: 0; opacity: var(--hud-tex-o, .5); }
+/* 水印粒子：低透明 + 各自不同旋转角。填充色也翻（深底＝白、浅底＝墨蓝）。 */
+.hud__wm { position: absolute; right: 0; bottom: 0; width: 62%; height: 100%; pointer-events: none;
+  opacity: var(--hud-wm-o, .5); }
+.hud__wm svg { position: absolute; fill: var(--hud-wm-fill, #fff); }
+.hud__wm .w1 { width: 26px; left: 6%;  bottom: 22%; transform: rotate(-18deg); opacity: .10 }
+.hud__wm .w2 { width: 44px; left: 26%; bottom: 8%;  transform: rotate(12deg);  opacity: .06 }
+.hud__wm .w3 { width: 17px; left: 44%; bottom: 40%; transform: rotate(28deg);  opacity: .14 }
+.hud__wm .w4 { width: 33px; left: 62%; bottom: 16%; transform: rotate(-40deg); opacity: .08 }
+.hud__wm .w5 { width: 21px; left: 80%; bottom: 34%; transform: rotate(8deg);   opacity: .12 }
+
+/* 对话带是一枚**真按钮**（点它换下一条观测记录）—— `display:block` + 归零外观。
+   用按钮而不是给它挂 `role`：键盘 Tab 到、Enter 换一条，白拿。</p> */
+/* ⚠️ 2026-10-10：这枚按钮现在住在 `.hud__main`（一个**列**）里，所以回到 `flex: none` ——
+   `flex: 1 1 auto` 是当年它和 `.keys` 同层时的写法，那个前提早就没了；
+   留着它在这会儿会让按钮在列里**往上长**，把名牌行顶到盒顶。 */
+.hud__dlg { position: relative; flex: none; min-width: 0; display: block;
+  padding: 0; cursor: pointer; font: inherit; text-align: left; color: inherit;
+  background: none; border: 0; }
+.hud__nm { display: flex; align-items: center; gap: 10px; flex: none;
+  /* 内边距从 28px 收到 8px 之后，名牌行住进了折条箭头那条带子。这里留 44px ⇒
+     名牌行**内容**的右沿距盒右边 20+44 = 64px，箭头左沿在 36px ⇒ 28px 净空。
+     ⚠️ 说清楚它管什么、不管什么（我第一版把这条的作用写大了）：
+       · 它管的是**文字不要跑到箭头底下**（视觉）；
+       · 它**不管**点击 —— 箭头是 `.hud__body` 的直接子元素且带 `z-index: 2`，
+         而 `.hud__in` 没有 z-index ⇒ 命中测试上箭头**本来就赢**。
+     实测（`_card.js` 有一条 `elementFromPoint` 断言）：把 `padding-right` 去掉、
+     再把名牌行撑到 1277px 宽，箭头中心照样命中自己。 */
+  padding-right: 44px; }
+
+/* ── 立绘位：**贴住屏幕左下角**（主页＝看板娘 / 帖子页＝作者，全站共用同一张图）──
+   用户 2026-10-10：「跟 galgame 那套系统一样，最左边显示人物头像」；
+   2026-10-11：「头像位置还是偏上，我希望是**占整个左下角**，展示大大大，
+   而且不只要考虑正方形图，还要考虑**长方形立绘**」；
+   2026-10-11 再一轮：「把头像的**高度降到比对话框低一点**，做个**边框**，**有天文特色**的边框」。
+
+   ⚠️⚠️ **框是固定形状的，图去适配框**（2026-10-11 用户纠正）：
+      我上一版做反了 —— 读素材的宽高比、让**框**跟着素材变 ⇒
+      「用户头像有正方形有长方形」这件事直接把界面搞坏：长图给出一条 **81px 的细条**、
+      横图给出一条扁条，而且**文本框的让位宽度也随每个用户的头像变**
+      ⇒ 同一个界面在不同人那里长得不一样。那不是「兼容」，是**被素材牵着走**。
+     现在：框恒为 `--pt-ar` 那个比例（默认 **1:1**，就是各站头像的通用形状），
+      高度 `--pt-h`（170 < 整个模块的 187 ⇒ 「比对话框低一点」），
+      宽 = 高 × 比例；图用 **`object-fit: cover`** 去铺满 ⇒
+      不拉扁、不留死白、**任何比例的素材都不会把版式顶变形**（版式恒定的那件事由框保证）。
+   ⚠️ `object-position: center`（CSS 的默认值，不揣魔数）：它只对**竖图**起作用
+      （横图是裁两侧、竖图才是裁上下）。我一开始写成 `center top`，实测竖长图会切到**发顶**，
+      而这一格装的是**用户头像**（脸在画面中间）⇒ 用默认的 `center` 才对。
+      哪天要放全身立绘，正确的做法是**每条头像自带一个 `object-position`**（数据问题），
+      不是在这里猜一个全局的百分比 —— 猜出来的数对一半的素材是错的。
+   ⚠️ 它是 `.hud` 的**直接子元素**、绝对定位：① `.hud__body` 带 `overflow: hidden`（折叠要裁）；
+      ② 住在 `.hud` 上 ⇒ `natural()`（量 `.hud__in` 的孩子）**看不见它** ⇒ `--box-h` 不被撑高。
+   ⚠️ `pointer-events` 在 `.hud` 上是 none（那块地仍然可点）；**这一枚自己**要 auto，
+      因为它是一枚按钮 —— 见下面那一段。 */
+.hud__pt { --pt-pad: 9px;
+  /* ⚠️ 它是一枚**按钮**（点它 = 用看图窗看这张头像）。两条连带：
+     · `pointer-events: auto` —— 不写就点不到（`.hud` 是 none，子元素默认继承）；
+       代价是它盖住的那块页面内容不再可点，这是换这个交互必然付的钱。
+     · `font: inherit` + 全套外观归零 —— button 有自己的 UA 样式，不清掉会盖在上面。 */
+  pointer-events: auto; cursor: pointer; font: inherit; -webkit-appearance: none; appearance: none;
+  position: absolute; left: 0; bottom: 0;
+  /* ⚠️ **z-index 必须压在两条横排之上**（`.hud__body` 是 6、`.hud__ui` 是 5）。
+     原来是 2 —— 立绘看起来是整个可见的，可只要往下离开顶部那 ~17px，命中的就是
+     `.hud__body > .hud__in`（那层是**透明**的，但它有 `pointer-events: auto`）⇒
+     用户报的「只有左上角一小块能点」就是这么来的（2026-11-07 实测：170×170 里只有最上面
+     一行 6/36 个采样点命中按钮，其余 30 点全被 `div.hud__in` 吃掉）。
+     抬到 8 与观测证卡片同级：卡片在 DOM 里更靠后 ⇒ 卡片开时仍压在立绘上（那正是要的）。
+     ⚠️ 这两层都是透明的，抬层**不改变任何视觉**，只把命中区还给立绘本身。 */
+  z-index: 8;
+  height: var(--pt-h, 170px); width: var(--pt-w, 170px);
+  /* 贴角的那个角**不圆**（圆角一上去就露馅「它其实是一张浮起来的卡」），只圆右上。 */
+  border-radius: 0 10px 0 0; overflow: hidden;
+  border: 2px solid var(--hud-edge);
+  padding: var(--pt-pad);
+  background: var(--hud-plate);
+  /* ⚠️ **双层框**（站点既有的「双贝塞尔嵌套」做法）：外层 2px `--hud-edge` 是深墨蓝，
+     它**不随主题翻**（浅底上正好当轮廓线）—— 但暗色下它就跟深背景糊在一起、整只框看不见了。
+     内层补一道 1px `--hud-ice-w` 发丝线（那个令牌**会翻主题**）：浅底上是深发丝、
+     暗底上是浅发丝 ⇒ 两种主题下框都立得住。（实测过：只留外层时暗色下框会「消失」。） */
+  box-shadow: inset 0 0 0 1px var(--hud-ice-w), 0 0 14px rgba(10, 24, 60, .2);
+  transition: opacity .2s var(--ease); }
+/* 折叠时收起：那时三排都缩成一条 28px 的折条，立绘会**悬在半空**（`--box-h` 不变、
+   而 `--ui-h` 那排已经收成 0）—— 一律藏掉。
+   ⚠️ 隐去必须**同时** `pointer-events: none`：它现在是 z8 的按钮，只写 `opacity: 0`
+      等于在卡片 / 折条上盖了一块看不见的 170×170 点击区（这一条在抬层之前就有，
+      抬到两条横排之上以后后果更明显）。 */
+.hud.is-fold .hud__pt { opacity: 0; pointer-events: none; }
+/* 观测证卡片打开时收起：卡片悬在整个模块**之上**、左边缘也在 20px ⇒
+   两者在同一块地上重叠。卡片自己抬头里就有一枚小立绘，这里让位。 */
+.hud.is-card .hud__pt { opacity: 0; pointer-events: none; }
+/* ⚠️ 图按 `--pt-pad` **内缩**，让出那一圈「目镜圈」—— 刻度就刻在那一圈上（见下面 ::before）。
+   ⚠️⚠️ 这里**必须用「在流里 + 100%×100%」**，不能用「绝对定位 + inset + width/height: auto」：
+       `img` 是**替换元素**，它的 `auto` 尺寸解析成**固有尺寸**、**不跟着 inset 走**
+       ⇒ 长图会溢出框、被 `overflow: hidden` 悄悄裁掉（实测：比例 2:5 的图，图区算出来 77×193，
+       比外框的 170 还高 —— 而且**没有任何报错**）。改成在流里，`100%` 就正好是**内容盒**。 */
+.hud__pt:focus-visible { outline: 2px solid var(--hud-gold-s); outline-offset: 3px; }
+.hud__pt:hover .hud__pt__seal { opacity: 1; }
+.hud__pt__img { position: relative; z-index: 1; display: block; width: 100%; height: 100%;
+  object-fit: cover; object-position: center; border-radius: 2px;
+  /* ⚠️ `z-index: 1` **不能省**：图与下面的色盘同区，而色盘在 DOM 里排在图**后面**
+     ⇒ 不给图抬层，**色盘就永远盖在图上面**（实测踩过：尺寸全对、屏幕上却还是那个「か」）。 */ }
+/* 兜底色盘：`.av` 的同一套配方（同名同色、色相走 `--ah`）—— 这是全站表达「一个人」的方式。
+   与图同一个内缩量，这样「有没有图」那一块地完全一致。 */
+.hud__pt__fb { position: absolute; inset: var(--pt-pad, 0px); display: grid; place-items: center;
+  font-family: var(--font-display); font-weight: 700; line-height: 1; border-radius: 2px;
+  font-size: calc(var(--pt-h, 170px) * .3);
+  background: hsl(var(--ah, 220) 62% var(--av-bg-l)); color: hsl(var(--ah, 220) 55% var(--av-fg-l)); }
+
+/* ── 边框上的**天文元素 ①：刻度轨**（顶边）──
+   配方逐字来自站点自己的那把尺（`.pl__slot` 的 `repeating-linear-gradient`，
+   也就是「全站第 N 帖」那把尺的语汇）：副刻度每 11px 一根、主刻度每 55px 一根
+   ⇒ **五格一进位**，读起来是一把真尺（§19 词库 ⑪ 刻度·时间曲线）。
+   右端留 22px 给下面那枚星芒 ⇒ 整句读作「**这把尺量到一颗星**」。 */
+.hud__pt::before { content: ''; position: absolute; left: 0; right: 22px; top: 0;
+  height: var(--pt-pad); z-index: 2; pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--hud-gold-w) 0 1px, transparent 1px 11px),
+    repeating-linear-gradient(90deg, var(--hud-gold-s) 0 1.5px, transparent 1.5px 55px);
+  background-size: 100% 4px, 100% 7px;
+  background-position: 0 1.5px, 0 1.5px;
+  background-repeat: no-repeat, no-repeat; opacity: .85; }
+/* ── 天文元素 ②：**本征星芒**（右上角）──
+   就是站点导航「当前页」用的那一枚 `<symbol id="i-stars4">`，**一个图形都不新造**
+   （§19 词库 ① 本体·单点）。与刻度同一档金色。 */
+.hud__pt__seal { position: absolute; top: 1px; right: 2px; z-index: 3;
+  width: 18px; height: 18px; fill: var(--hud-gold-s); opacity: .9; pointer-events: none; }
+/* ── 天文元素 ③：**流星尾**（底边）──
+   「由透明渐实、末端一颗亮头」是站点 `.shower__streak` 的语汇（§19 词库 ④ 长度·拖尾）。
+   头在**右侧** —— 与顶边那把尺同向，整只框从左上读到右下。 */
+.hud__pt::after { content: ''; position: absolute; left: var(--pt-pad); right: var(--pt-pad);
+  bottom: calc(var(--pt-pad) / 2 - 1px); height: 2px; z-index: 2; pointer-events: none;
+  background-image:
+    radial-gradient(circle 2.4px at calc(100% - 3px) 50%, var(--hud-gold-s) 0 100%, transparent 100%),
+    linear-gradient(90deg, transparent, var(--hud-gold-w) 78%, var(--hud-gold-s));
+  opacity: .75; }
+/* 卡片抬头里那枚**小立绘**：与上面那枚**同一套插槽**（同样的 img + 色盘），
+   只是尺寸小、而且在流里（不是绝对定位）。⚠️ 别让它继承 `.hud__pt` 的绝对定位。 */
+.hud__cpt { position: relative; flex: none; width: 40px; height: 40px; border-radius: 6px;
+  overflow: hidden; background: var(--hud-plate); border: 1px solid var(--hud-ice-w); }
+.hud__cpt .hud__pt__fb { font-size: 16px; }
+
+/* 台词那一栏：名牌行在上、台词在下，整体贴着盒底（原来那一列的写法搬进来） */
+.hud__main { flex: 1 1 auto; min-width: 0;
+  display: flex; flex-direction: column; justify-content: flex-end; }
+
+/* ── 名牌行里**直接可见**的那几条（用户：「作者信息能直接显示一些，展开会显示全部」）──
+   取整份观测证里最能说明「这人是谁」的三条（身份 / 在站 / 积分），其余留在展开的卡片里。
+   分隔用**一道发丝竖线**而不是圆点 —— 站点那两个小圆点（`.bv`、`.pf__list`）已经各自有语义了。 */
+.hud__info { display: flex; align-items: center; flex-wrap: wrap; gap: 0 10px; min-width: 0;
+  /* ⚠️ 行高写死 1.2：继承站点正文的 1.65 会让 12px 的信息撑出 **19.8px** 的行盒，
+     比名牌本身（18.8）还高，于是整条框白长 1px —— 这一行的每个像素都会变成框高。 */
+  font-size: 12px; line-height: 1.2; color: var(--hud-ink); }
+/* ⚠️ **必须带描边**：底带是刻意做透的（用户第八轮「我要很低调，透明度很高」），
+   而名牌行现在住进的是带子**最透的那一段**（越靠上越透明）⇒ 页面内容会从字缝里透出来。
+   站里对这件事早就有定论（§18.18 ⑤）：**内容长在透明带上就自己带描边** ——
+   这里逐字沿用 `.key__t` 那套（四向 1px `--hud-outline`），那是已经量过 8.25 / 11.81:1 的配方。 */
+.hud__i { display: inline-flex; align-items: center; white-space: nowrap;
+  font-weight: 600; letter-spacing: .01em;
+  text-shadow: 1px 0 0 var(--hud-outline), -1px 0 0 var(--hud-outline),
+               0 1px 0 var(--hud-outline), 0 -1px 0 var(--hud-outline); }
+.hud__i + .hud__i { padding-left: 10px; border-left: 1px solid var(--hud-ice-w); }
+/* 台词：15px → **17px**（用户：「字体有点小，放大」）。`height` 用 em 写 ⇒ 行数不随字号变。
+   ⚠️ 2026-10-10 压矮：`line-height 1.7 → 1.55`、`height 3.4em → 3.1em`。
+   3.1em = 2 × 1.55em ⇒ **仍然是整整两行**，只是排得更紧（用户选的就是这一档）。
+   写死高度是**必须的**：打字机逐字出字时，`height: auto` 会让整条框随字数上下跳。 */
+.hud__tx { display: block; flex: none; margin: 2px 0 0; font-size: 17px; line-height: 1.55;
+  height: 3.1em; overflow: hidden; }
+/* 交互行的定位与动画已经在上面 `.hud__ui` 那条里写掉了 —— 这里**不能**再留一条
+   `position: relative`，否则它会压掉那条 absolute（源码顺序在后，特异性相同）。 */
+
+/* ── 功能键：**仿 galgame 对话框内嵌的小方格**（第 12 轮整组重写）──
+   上一版是「42px 正圆 + 上亮下暗球面 + 2px 描边 + 顶沿内高光 + 硬投影」。
+   用户第 12 轮的判词：「**咱就是说一定要圆形吗？**……我一开始说的意思就是
+   **整个功能栏的圆形设计**，非常的垃圾……我们要做的是**仿 galgame 文本框里的功能栏**，
+   不是让你做 webUI 那种**傻大黑粗**的按钮」（附了七张 galgame 截图）。
+   ⇒ 所以这一轮改的是**形制**，不是图标。
+   新形制照七张参考图的共同语言：小圆角方（**不是圆**）、**1px 发丝边**、**无填充**、**无投影**，
+   图标在上、**小字在下**（有字就不用猜图标 —— 这也正是「不是硬创建一些莫名其妙的图标」的正解）。
+   ⚠️ `.keyclu` 用 `grid-template-columns` 而不是 `display: contents`：后者会让
+      `role="group"` 在一部分读屏里失效（那两条 aria 分组是这个模块的可达性骨架）。
+      这样每一簇仍是一个**真盒子**，而 KEYCLU 正好三簇 ⇒ **每簇一行，天然 3×3**。
+   ⚠️ 空壳用**虚线边**表达「这里还没有东西」，复用站里 `.pl__row--ph` 已经有的那套语言。
+      **不用 opacity 压暗** —— memories 2.93：用不透明度表达「未实现」会把颜色变脏。 */
+/* ⚠️ **这圈「板」是必须的**（第 12 轮加、第 13 轮保留）：
+   功能栏虽然现在住在文本框**底部、衬垫较实的那一段**，但底带仍是半透明的长渐变 ——
+   垫板保证它压在任何页面内容上都读得清，而且这也是参考图自己的形制
+   （图 7 里那组按钮同样**自带一块板**）。
+   ⚠️ 用 `--hud-plate`（站点「小板底」令牌，`.pl__chip` 也在用），不另造一种表面。
+   ⚠️ `margin: 0 auto`（第 15 轮）而不是 `align-self: center`：用户选的是
+      「**功能栏居中，时钟与胶囊在右**」—— 也就是在**剩余空间里**居中，
+      星等时钟与歌单胶囊跟在其后。`auto` 左右外边距会**平分剩余空间**，
+      这正是那个效果；空间不够时它们自动收成 0，不会溢出。
+      （第 14 轮的 `align-self: center` 是在「功能栏独占一整行」的前提下写的，本轮到不了那一步。）
+   ⚠️ `flex-wrap: wrap`：窄屏一行排不下就**换行**，而不是把格子缩到看不清。
+      换行发生在 `.keys` **内部**，而 `natural()` 读的是 `.keys` 自己的 `offsetHeight`
+      ⇒ 换行后的真实高度已经被算进去了，不会少报。 */
+/* ⚠️ **绝对居中的写法**（第 15 轮定稿，试错两次）：
+      `position: absolute` + `left: 0; right: 0` + `width: max-content` + `max-width: 100%`
+      + `margin: 0 auto`。
+   ⚠️ **为什么不用更直觉的 `left: 50%` + `translateX(-50%)`**：绝对定位元素在
+      `left` 已定、`width: auto` 时，**可用的收缩宽度 = 包含块 − left**，也就是**只有一半**。
+      实测 1000px 视口下功能栏需要 494px，而可选宽度被砍到 492.5px ⇒ **锁那一格无缘无故掉到第二行**
+      （1000~1008 之间整段都这样）。现在 `left: 0; right: 0` 把可用宽度放开到整块，
+      `width: max-content` 按内容收缩、`max-width: 100%` 兜住过窄的情形，
+      最后由那对 `auto` 外边距居中 —— 没有那个「半宽」上限。
+      · `bottom` 写成**字面量 10px**（＝这一层的 `padding-bottom`）—— 脱流之后没法靠
+        `align-items: flex-end` 对齐了，得自己钉在底边。改了 padding 就要一起改这里。
+      · 它脱流之后，右边那组（仪器盘 / 胶囊）由父层的 `justify-content: flex-end` 兜住。
+      ⚠️ 宽屏余量足够（1400 下两侧各余约 360px）；**窄屏会撞上右边那组**，
+        所以 ≤900 有另一套「退回流式」的覆盖 —— 两边都得在，缺一个就是重叠或溢出。 */
+.keys { display: flex; align-items: center; flex-wrap: wrap; gap: 18px;   /* 簇间 18px */
+  position: absolute; left: 0; right: 0; bottom: 10px;
+  width: max-content; max-width: 100%; margin: 0 auto;
+  padding: 5px; border-radius: 8px;
+  background: var(--hud-plate); border: 1px solid var(--hud-edge); }
+/* 三簇各是一个**真盒子**（第 13 轮从 `display: contents` 改回来）——
+   横排下它们本来就是 flex 组，`role="group"` 因此有真实盒子承载，比 `display: contents` 稳。
+   ⚠️ 组内 4px / 组间 18px：用户要「每个区域的功能可以隔开一点」——
+      这个 4 : 18 的对比就是那句「隔开」的全部实现。 */
+.keyclu { display: flex; align-items: center; gap: 4px; }
+/* 锁那一格与三簇再额外隔开一点 —— 它是「另一种东西」，不是第四个功能簇 */
+.keyclu--lock { margin-left: 6px; }
+
+/* ══ 功能栏的「出现」—— 锁管的就是这个（第 13 轮）══
+   用户判词：「锁控制的是功能栏的**出现**，不是控制能不能用……就是 galgame 的那种功能栏，
+   **你鼠标不放上去他不会悬浮出来**」。
+   ⇒ 锁「关」（`.hud` **不带** `.is-autohide`）＝ 功能栏**常驻显示**；
+      锁「开」（`.hud` 带 `.is-autohide`）＝ 默认不显示，**鼠标移到文本框上 / 键盘聚焦进去**才浮出。
+   ⚠️ 用 `opacity` + `pointer-events` 做显隐，**绝不动高度**：
+      高度一动 `--box-h` 就跟着变，而 `syncH()` 只在载入 / resize / 字体就绪时跑 ⇒ 会不同步；
+      而且整个文本框会随悬停上下跳，那正是 galgame 里最不该有的抖。
+   ⚠️ 触发根是 **`.hud`（整个大模块）**，不是 `.hud__body`：第 15 轮功能栏搬到了下排
+      （与星等时钟同行），如果只盯 `.hud__body:hover`，鼠标移在下排上就**不会浮出**。
+      盯整个模块才符合用户那句「**文本框是个大模块**，包含了文本显示、功能栏、星等时钟、歌单胶囊」。
+      ⚠️ `.hud` 自己是 `pointer-events: none`，但 `:hover` 对**祖先**生效（悬停其后代即可命中），
+        所以这条照常工作。
+   ⚠️ `:focus-within` **不能省**：只写 `:hover` 的话键盘用户**永远够不到功能栏**（它一直 opacity:0）。
+      加上之后顺序天然成立：Tab 先落到台词按钮 → 整个模块 focus-within → 功能栏浮出 → 再 Tab 就是九枚键。
+   ⚠️ 隐去时**必须同时 `pointer-events: none`** —— 否则看不见的键仍然在吃点击。
+   ⚠️ 与折叠（`.is-fold`）互不干涉：折叠时整条 `.hud__body` 已经是 `opacity: 0` + `inert`，
+      两种机制叠着也只是「都隐形」，不会打架。 */
+.hud.is-autohide .keys { opacity: 0; pointer-events: none; }
+.hud.is-autohide:hover .keys,
+.hud.is-autohide:focus-within .keys { opacity: 1; pointer-events: auto; }
+/* ⚠️ 探针要能在**不动鼠标**的情况下验「浮出」这一态（headless 里逼不出真 hover），
+   所以留一个显式档：`.hud.is-reveal` 与 `:hover` 同效。它**不参与生产逻辑**，
+   只是给 `_hudfix.js` 一个可编程的等价开关。 */
+.hud.is-autohide.is-reveal .keys { opacity: 1; pointer-events: auto; }
+.key { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: var(--k-tile, 40px); height: var(--k-tile, 40px);
+  padding: 0; cursor: pointer; font: inherit; border-radius: 6px;
+  background: none;
+  color: var(--hud-ink); border: 1px solid var(--hud-ice-w);
+  transition: border-color .16s var(--ease), background .16s var(--ease), color .16s var(--ease); }
+/* ⚠️ 图标 16px：viewBox 24 渲染成 16px ⇒ 缩 0.667，`stroke-width: 2.2` 才等于屏幕上 ~1.47px。
+      写 .i 默认的 1.8 只剩 1.2px，配上下一条那圈 1px 的边框会显得整格发虚。
+   ⚠️ 四向 drop-shadow ＝ **给图标描边**，理由与小字标签那条相同（见下）。
+      实心图标（收藏的星芒 / 关注的目标 / 分享的流星）也一并被描住。
+   ⚠️ 仍然只写 `.key > svg`，**不动 `.i`** —— `.i` 还被走带键 / .pl__fav / .pl__vol-ico 用着，
+      那些是 #i-play 一类的**实心** path，加粗描边会连它们一起改掉。 */
+.key > svg { width: 16px; height: 16px; stroke-width: 2.2;
+  filter: drop-shadow(0 1px 0 var(--hud-outline)) drop-shadow(0 -1px 0 var(--hud-outline))
+          drop-shadow(1px 0 0 var(--hud-outline)) drop-shadow(-1px 0 0 var(--hud-outline)); }
+/* 标签：**12px**（站点硬规则：正文不小于 12px —— 探针里有一条专门守它）。
+   ⚠️ 本来想用参考图那种 10px 小字，但 10px 会**直接踩穿站点的硬规则**，
+      而且探针会红。选 12px + 把格子放大到装得下，而不是**放宽一条既有规则**去迁就它。
+      尺寸账：格子 40 = 图标 16 + 间 2 + 字 12 + 上下各 5。
+   ⚠️ **四向描边是必须的**：功能键住在**文本框内部**，而那一带正是**底带最透的地方**
+      （实测方格顶沿处衬垫只有 **0.22** 不透明度、底沿 0.67）。
+      台词早就是这个解法了（第 9~10 轮立的「对照度模型」：内容长在透明带上，
+      就**自己带描边**，而不是把底带加厚）—— `ink` 或 `outline`，谁对得上底谁满足。
+      这一条**同时保住了第 8~10 轮那条「很低调、透明度很高」的底带**：它一个色标没动。 */
+.key__t { font-family: var(--font-round); font-size: 12px; font-weight: 600; letter-spacing: .01em;
+  line-height: 1; white-space: nowrap;
+  text-shadow: 1px 0 0 var(--hud-outline), -1px 0 0 var(--hud-outline),
+               0 1px 0 var(--hud-outline), 0 -1px 0 var(--hud-outline); }
+/* hover / 聚焦：**金细边 + 极淡金底**（复用第 11 轮那个「金·极淡底」令牌）。
+   不是球面提亮、不是外辉光 —— 参考图里没有辉光，辉光正是「webUI 大按钮」的语言。 */
+.key:hover, .key:focus-visible { border-color: var(--hud-gold-s);
+  background: var(--hud-gold-tint); color: var(--hud-gold-s); }
+.key:active { background: var(--hud-gold-w); }
+/* 临时功能键 ＝ **双线描边**。
+   四种线型各管一件事，互不打架：
+     单实线 = 常驻（站在哪一页都能用）
+     双线   = 临时（只对当前这一篇帖子成立；且它本身也只在帖内页渲染）
+     虚线   = 还没做
+     点线   = 锁住 / 停用
+   ⚠️ 这条写在 `[data-todo]` 之前：真撞上「又临时又没做」时，以「还没做」为准。
+   ⚠️ 「举报申诉」四个字在 12px 下要 48px，40px 的格子装不下 —— 只给这一枚放宽 22px
+      （内容 56px，左右各留 4px），不放宽站点 12px 的硬规则（同 `.key__t` 那段注释里的取舍）。 */
+.key[data-kind="temp"] { border-style: double; border-width: 3px; }
+.key[data-k="举报申诉"] { width: calc(var(--k-tile, 40px) + 22px); }
+/* 空壳键 ＝ **虚线边**（与站里 `.pl__row--ph` 同一套语言：虚线＝这里还没有东西）。 */
+.key[data-todo="1"] { border-style: dashed; color: var(--hud-ice-s); }
+.key[data-todo="1"]:hover, .key[data-todo="1"]:focus-visible { border-color: var(--hud-gold-s); }
+/* 锁着功能键（防误触）：点线边 + 更淡的字。
+   ⚠️ 特异性 (0,3,0)，压过 `.key:hover` 与 `.key[data-todo="1"]` 的 (0,2,0) —— 所以
+      **不必依赖源码顺序**；下面这两条也把 hover 那套金色**显式复位**，
+      否则锁着的键一悬停还是金边金底，「按不动」就白说了。 */
+.key:disabled { cursor: not-allowed; border-style: dotted; color: var(--hud-ice-w); }
+.key:disabled:hover, .key:disabled:focus-visible {
+  border-color: var(--hud-ice-w); background: none; color: var(--hud-ice-w); }
+
+/* ── 星时钟（2026-11-06 · v3p 标题画面的 dialSVG 原样搬来，大件、从右下角浮出来）──
+   v3p 里那只盘 820px、压在标题左侧、大半在画外 —— 这里沿用同一读法：
+   盘锚在功能栏的**右下角外侧**，出画的部分交给视口，靠近画内的部分用遮罩化开。
+   结构 / 动画 / 刻度全部照抄，**没有指针、没有额外的点、没有底盘**：
+     · 外圈 72 格 + 赤经时角 0h…22h —— 顺时针 240s 一圈
+     · 内圈虚线环 + 24 格 + 一枚三角游标 —— 逆时针 150s（与外圈反向，游标跟着内圈走）
+     · 斜置 23.4° 的黄道椭圆 —— 静止
+   ⚠️ 装饰件：absolute + pointer-events:none ⇒ 不进 flex 流，`--ui-h` 与它无关。
+   ⚠️ 比例尺：v3p 渲染 820px、这里 700px ⇒ 线宽 / 字号 / dash / 格长按 **820/700 = 1.17** 倍重标
+      （v3p 的 1 单位 = 1.37px，这里 = 1.17px），屏幕上观感与 v3p 一致。 */
+.dial { position: absolute; right: 0; bottom: 0; width: clamp(330px, 30vw, 380px); aspect-ratio: 1;
+  /* ⚠️ 出画的那一截用**自身百分比**的位移（26% / 37%），不写死像素 —— 盘的大小随视口走，
+      偏移必须跟着一起缩，否则 900 宽时 700px 的盘会横跨 78% 的屏幕（`_hudfix` 抓到过）。 */
+  transform: translate(28%, 49%);
+  z-index: -1; opacity: .55; pointer-events: none; color: var(--hud-gold-s);
+  /* ⚠️ 上部超出文本框的那一段**渐变消失**，不是硬裁（用户 2026-11-06：「上部如果超出文本框
+     系统就渐变消失，美感啊」）。用一层径向遮罩从「视口右下角」往外化开：
+     盘心附近清楚，远离角的部分一路溶进页面 —— 左、上两条边都不会出现刀切一样的断口。
+     ⚠️ 遮罩中心要对准**视口角在盘内的位置**（= 100% − 出画位移 26% / 37% ⇒ 74% / 63%），
+        不是盘心；对错了会变成「中间亮、两边灰」的一团。 */
+  -webkit-mask-image: radial-gradient(circle at 72% 51%, #000 0 46%, transparent 86%);
+  mask-image: radial-gradient(circle at 72% 51%, #000 0 46%, transparent 86%); }
+.dial circle, .dial ellipse { fill: none; stroke: currentColor; stroke-opacity: .32; stroke-width: 1.17; }
+.dial__o, .dial__i { transform-box: view-box; transform-origin: 300px 300px; }
+.dial__o { animation: dialSpin 240s linear infinite; }
+.dial__i { animation: dialSpin 150s linear infinite reverse; }
+@keyframes dialSpin { to { transform: rotate(360deg); } }
+.dial__t { stroke: currentColor; stroke-opacity: .5; }
+/* ⚠️ 刻度是 `<line>`，上面那条 `.dial circle, .dial ellipse` 盖不到它 ——
+   少写这条，96 根刻度会以 SVG 默认的 `stroke: none` 静默消失（2026-11-06 被 _hudfix 抓到）。 */
+.dial__t line { stroke-width: 1.17; }
+.dial__dash { stroke-dasharray: 2.3 8.2; }
+.dial__h text { font: 500 22px var(--font-mono); fill: currentColor; fill-opacity: .7;
+  text-anchor: middle; dominant-baseline: middle; }
+.dial__pt { fill: currentColor; }
+.dial__ec { stroke-dasharray: 1.2 7; stroke-opacity: .55; }
+/* ⚠️ 浅色主题单独加浓一档墨：v3p 那只盘压在夜色 CG 上，同一组 alpha 挪到白色卡片上就糊成一片灰。
+   这里**只改墨量**，结构 / 动画 / 尺寸一个字没动（2026-11-06 实测：不加这一档，浅底上只剩几道虚影）。 */
+[data-theme="light"] .dial { opacity: .85; }
+[data-theme="light"] .dial circle, [data-theme="light"] .dial ellipse { stroke-opacity: .5; }
+[data-theme="light"] .dial__t { stroke-opacity: .62; }
+[data-theme="light"] .dial__h text { fill-opacity: .85; }
+@media (prefers-reduced-motion: reduce) { .dial__o, .dial__i { animation: none !important; } }
+
+/* ── 音乐播放器 ──
+   站点里**一个音频文件都没有**（v2p/op/ 是空目录，全仓无 .mp3/.ogg），所以这是
+   **诚实空态**：进度与走带 disabled，但音量滑块是真的（写 localStorage、作用到 <audio>.volume）。
+   ⚠️ 走带按钮**只在面板里**，胶囊只负责开合 —— 「一个功能两个入口」是错的信息架构。
+   ⚠️ 开合由**点击钉住**，不跟 hover：跟 hover 的话鼠标一移向面板，面板就跑了。 */
+.pl { position: relative; display: flex; align-items: center; flex: none; }
+.pl__chip { display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 5px; cursor: pointer;
+  font: inherit; border-radius: var(--r-pill);
+  background: var(--hud-plate); color: var(--hud-ink); border: 1.5px solid var(--hud-edge);
+  box-shadow: 0 2px 0 var(--hud-shadow);
+  transition: border-color .16s var(--ease), background .16s var(--ease); }
+.pl__chip:hover, .pl__chip:focus-visible, .pl__chip[aria-expanded="true"] {
+  border-color: var(--hud-gold-s); background: var(--hud-plate-hi); }
+/* 封面缩略：站点程序化封面（`coverGradient()`）+ 同心环 / 金十字母题。底色由 JS 内联给出。 */
+.pl__cov { position: relative; width: 30px; height: 30px; border-radius: 4px; flex: none;
+  border: 1.5px solid var(--hud-edge); }
+.pl__cov::after { content: ''; position: absolute; inset: 0;
+  background-image:
+    radial-gradient(ellipse 62% 44% at 68% 38%, transparent 0 46%, var(--hud-ice-s) 46% 50%, transparent 50%),
+    radial-gradient(ellipse 38% 26% at 68% 38%, transparent 0 44%, var(--hud-ice-w) 44% 50%, transparent 50%),
+    linear-gradient(var(--hud-gold-s), var(--hud-gold-s)) 26% 70% / 9px 1.4px no-repeat,
+    linear-gradient(var(--hud-gold-s), var(--hud-gold-s)) 26% 70% / 1.4px 9px no-repeat; }
+.pl__meta { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
+.pl__meta b { font-family: var(--font-round); font-size: 12px; font-weight: 700; letter-spacing: .02em;
+  white-space: nowrap; }
+/* 面板：**复用观测记录牌的配方**（星野 + 2px 描边 + 4px 硬投影 + 角饰）——
+   这是「不突兀」的核心：它不是一块新表面，就是站里那口箱子。 */
+.pl__panel { position: absolute; right: 0; bottom: calc(100% + 10px); width: 362px;
+  padding: 13px 15px 15px; border-radius: 5px; overflow: hidden;
+  background-image: var(--hud-stars), var(--hud-cloud), var(--hud-deep);
+  border: 2px solid var(--hud-edge); box-shadow: 4px 4px 0 var(--hud-shadow);
+  display: flex; flex-direction: column; gap: 11px; }
+.pl__panel[hidden] { display: none; }
+.pl__top { display: flex; gap: 13px; align-items: center; }
+.pl__art { position: relative; width: 78px; height: 78px; flex: none; }
+.pl__sleeve { position: absolute; left: 0; top: 0; width: 62px; height: 62px;
+  border-radius: 4px; border: 1.5px solid var(--hud-ice-s); box-shadow: 0 2px 0 var(--hud-shadow); }
+.pl__sleeve::after { content: ''; position: absolute; inset: 0;
+  background-image:
+    radial-gradient(ellipse 64% 46% at 66% 40%, transparent 0 47%, var(--hud-ice-s) 47% 50%, transparent 50%),
+    radial-gradient(ellipse 40% 28% at 66% 40%, transparent 0 45%, var(--hud-ice-w) 45% 50%, transparent 50%),
+    linear-gradient(var(--hud-gold-s), var(--hud-gold-s)) 30% 72% / 11px 1.6px no-repeat,
+    linear-gradient(var(--hud-gold-s), var(--hud-gold-s)) 30% 72% / 1.6px 11px no-repeat; }
+/* ⚠️ 唱片**必须有一处不对称**才看得出在转 —— 一圈同心圆是**旋转对称**的，转与不转一个样。
+   所以加一道从标签伸向盘缘的金色刻度（`.mk`），那才是「在转」的证据。 */
+.pl__disc { position: absolute; left: 44px; top: 44px; z-index: 2; width: 34px; height: 34px;
+  filter: drop-shadow(0 1px 2px var(--hud-shadow)); }
+.pl__disc svg { width: 100%; height: 100%; display: block; }
+.pl__disc .bod { fill: var(--hud-edge); }
+.pl__disc .grv { fill: none; stroke: var(--hud-ice-w); stroke-width: .8; }
+.pl__disc .lbl { fill: var(--hud-gold-s); }
+.pl__disc .hol { fill: var(--hud-void); }
+.pl__disc .mk { stroke: var(--hud-gold-s); stroke-width: 1; stroke-linecap: round; }
+/* 唱片只在 `.is-play` 时转。⚠️ **基础态完全不挂 animation**，不用 `animation-play-state`
+   —— 那个做法没法保证「每个周期只播一次」，站点已有注释明确否过它。 */
+.pl__disc.is-play { animation: hudSpin 12s linear infinite; }
+@keyframes hudSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pl__disc.is-play { animation: none !important; } }
+.pl__info { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pl__title { font-family: var(--font-round); font-size: 14px; font-weight: 700; color: var(--hud-ink);
+  text-shadow: 1px 0 0 var(--hud-outline), -1px 0 0 var(--hud-outline), 0 1px 0 var(--hud-outline), 0 -1px 0 var(--hud-outline); }
+.pl__artist { font-family: var(--font-round); font-size: 12px; color: var(--hud-ink-soft); }
+.pl__bar { display: flex; flex-direction: column; gap: 2px; }
+.pl__time { font-family: var(--font-mono); font-size: 12px; color: var(--hud-gold-s); }
+.pl__bot { display: flex; align-items: center; gap: 7px; }
+.pl__vol-ico { width: 16px; height: 16px; flex: none; color: var(--hud-gold-s); }
+/* 进度 / 音量：**原生 input[type=range]**，只换外观 —— 白拿键盘操作、点按与
+   无障碍语义（role=slider、aria-valuenow），零 JS 拖动逻辑。
+   ⚠️ 控件本身高 **24px**：那是命中区；视觉上的「细线」由 track 承担。 */
+.pl__rng { -webkit-appearance: none; appearance: none; width: 100%; height: 24px;
+  margin: 0; background: none; cursor: pointer; }
+.pl__rng:disabled { cursor: default; }
+/* 槽：2px 细线；已播段用金（「金只做线」），未播段是半透冰蓝 */
+.pl__rng::-webkit-slider-runnable-track { height: 2px; border-radius: 2px; background: var(--hud-ice-w); }
+.pl__seek::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, var(--hud-gold-s) var(--p, 0%), var(--hud-ice-w) 0); }
+.pl__rng::-moz-range-track { height: 2px; border-radius: 2px; background: var(--hud-ice-w); }
+.pl__vol-s::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, var(--hud-gold-s) var(--v, 70%), var(--hud-ice-w) 0); }
+.pl__seek::-moz-range-progress, .pl__vol-s::-moz-range-progress {
+  height: 2px; border-radius: 2px; background: var(--hud-gold-s); }
+.pl__rng::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; margin-top: -4px;
+  border-radius: 50%; background: var(--hud-gold-s); border: 1.5px solid var(--hud-edge); }
+.pl__rng::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%;
+  background: var(--hud-gold-s); border: 1.5px solid var(--hud-edge); }
+.pl__rng:disabled::-webkit-slider-thumb { background: var(--hud-ice-s); }
+.pl__rng:disabled::-moz-range-thumb { background: var(--hud-ice-s); }
+.pl__vol-s { width: 62px; flex: none; margin-left: auto; }
+/* 走带按钮：与功能键**同一颗球**（共用 --hud-ball），只是小一号（32 / 38px，都过 24px 门槛） */
+.pl__tb { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; cursor: pointer;
+  border-radius: 50%; background: var(--hud-ball);
+  color: var(--hud-ball-ink); border: 2px solid var(--hud-edge); flex: none;
+  box-shadow: inset 0 2px 0 var(--hud-ball-top), 0 2px 0 var(--hud-ball-drop);
+  transition: transform .16s var(--ease), filter .16s var(--ease); }
+.pl__tb > svg { width: 15px; height: 15px; }
+.pl__tb--pp { width: 38px; height: 38px; }
+.pl__tb--pp > svg { width: 18px; height: 18px; }
+.pl__tb:hover:not(:disabled), .pl__tb:focus-visible:not(:disabled) { transform: translateY(-1px);
+  filter: brightness(1.16) saturate(1.05); box-shadow: inset 0 2px 0 var(--hud-ball-top),
+  0 3px 0 var(--hud-ball-drop), 0 0 14px var(--hud-glow); }
+.pl__tb:disabled { opacity: .45; cursor: default; }
+
+/* ── 锁：**功能栏里的一格**（第 13 轮搬进来，并做成和其余九枚同规格的格子）──
+   ⚠️ 它原来住在 `.hud__ui` 那一排的最右（用户说的「右下角」）。用户要求
+      「**锁要放在功能栏里**，而不是右下角，最好也做一个 **box** 包着」——
+      所以现在它与其余九枚**同一套格子样式**（同样的 `--k-tile`、同样的 6px 圆角、
+      1px 发丝边、无填充），并且**带小字标签**（原来它是「无可见文字」的图形控件）。
+   颜色语义没变：**暖金＝锁梁落下（钉住＝常驻）/ 冷冰蓝＝锁梁翘起（松开＝自动隐藏）**。
+   切换时锁梁抬起并右倾、锁体微沉 —— 这个姿态动画照旧。 */
+.hud__lock { position: relative; flex: none;
+  width: var(--k-tile, 40px); height: var(--k-tile, 40px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  padding: 0; cursor: pointer; font: inherit; border-radius: 6px;
+  background: none; border: 1px solid var(--hud-ice-w);
+  color: var(--hud-gold-s);
+  transition: border-color .16s var(--ease), background .16s var(--ease), color .16s var(--ease); }
+.hud__lock svg { width: 16px; height: 16px; overflow: visible;
+  filter: drop-shadow(0 1px 0 var(--hud-outline)) drop-shadow(0 -1px 0 var(--hud-outline))
+          drop-shadow(1px 0 0 var(--hud-outline)) drop-shadow(-1px 0 0 var(--hud-outline)); }
+/* 与 `.key` 同一套 hover 语言：金细边 + 极淡金底（**没有辉光** —— 辉光是 webUI 大按钮的语汇） */
+.hud__lock:hover, .hud__lock:focus-visible { border-color: var(--hud-gold-s); background: var(--hud-gold-tint); }
+/* 锁梁：从「搭在锁体上」变成「抬起并向右倾」——绕它自己的底部转，就是掀开的动作 */
+.hud__lock .sh { transform-origin: 50% 100%; transition: transform .26s var(--ease); }
+.hud__lock .bd { transition: transform .26s var(--ease); }
+.hud__lock .kh { fill: var(--hud-void); }
+.hud__lock[aria-pressed="false"] { color: var(--hud-ice-s); }
+.hud__lock[aria-pressed="false"] .sh { transform: translateY(-2.4px) rotate(26deg); }
+.hud__lock[aria-pressed="false"] .bd { transform: translateY(1.2px); }
+
+/* ══ 歌单 ══
+   用户第 4 条：面板里再做一块**歌单列表** —— 分不同歌单、列表式显示，每条带
+   **封面 / 曲名 / 歌手 / 专辑 / 收藏**。
+   ⚠️ 站点里没有音频文件（见 hud.js 里 TRACKS 的说明），所以这里是
+      **结构是真的、数据是占位的**：点一条 ＝ **选中**它并更新「正在播放」，播放键仍 `disabled`。
+      **不假装能播**；以后把每条的 `src` 填上，这一整块立刻可用。
+   ⚠️ 列表高度封顶：面板是**往上长**的，不封顶会顶穿视口。 */
+.pl__tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+/* 页签：选中态用**金细边 + 极淡金底**，不用整块金底 —— 否则又是一排色卡
+   ⚠️ 底色用 --hud-gold-tint，**不是** --hud-gold-w —— 后者是线的令牌，铺成块会发土（浅色主题尤甚）。 */
+.pl__tab { padding: 3px 10px; cursor: pointer; font: inherit; border-radius: var(--r-pill);
+  font-family: var(--font-round); font-size: 12px; font-weight: 600; letter-spacing: .02em;
+  color: var(--hud-ice-s); background: none; border: 1px solid var(--hud-ice-w);
+  transition: color .16s var(--ease), border-color .16s var(--ease), background .16s var(--ease); }
+.pl__tab:hover { color: var(--hud-ink); border-color: var(--hud-gold-w); }
+.pl__tab[aria-selected="true"] { color: var(--hud-gold-s); border-color: var(--hud-gold-s);
+  background: var(--hud-gold-tint); }
+
+/* ⚠️ 固定 **6 行**高（`--pl-rows` 是唯一事实来源：CSS 用它算高度，hud.js 用它算要补几个占位）。
+   旧版是 `max-height: min(32vh, 262px)` —— **随视口高度变**，窗口一矮就只剩 5 行半，
+   正是用户第 10 条说的「能不能做好列表最小高度？」。
+   超过 6 首 ⇒ 滚动；不足 6 首 ⇒ 由 hud.js 补**占位行**把高度撑满（列表不会忽高忽低）。 */
+.pl__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px;
+  height: calc(var(--pl-rows, 6) * var(--pl-row-h, 42px) + (var(--pl-rows, 6) - 1) * 2px);
+  overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
+.pl__row { display: flex; align-items: center; gap: 9px; border-radius: 5px; padding: 4px 5px;
+  height: var(--pl-row-h, 42px); box-sizing: border-box; flex: none;
+  transition: background .14s var(--ease); }
+.pl__row:hover { background: var(--hud-ice-w); }
+/* 当前这一首：**极淡金底 + 左边一道 3px 金线**。
+   ⚠️ 底色同样换掉 --hud-gold-w（线令牌，铺成块在浅色主题下发土）。
+      把「是哪一首」交给**左边那道线** —— 站点一贯是「金只做线」（.pl__disc .mk / 进度条已播段 同理）。
+   ⚠️ 那道线用 inset box-shadow，不用 border-left：`.pl__row` 有 padding: 4px 5px，
+      加 border 会把内容整体挤右 3px、六行一起错位；inset 阴影画在 padding 之内，不动布局。 */
+.pl__row[data-cur="1"] { background: var(--hud-gold-tint);
+  box-shadow: inset 3px 0 0 var(--hud-gold-s); }
+/* 占位行（歌单不足 6 首时补足）：画成**空槽**（虚线框 + 一道虚线），不是「一首灰色的歌」。
+   与「空壳键＝没点亮的星位」是同一套语言：用**结构**表达「这里还没有东西」，
+   而不是把真东西压暗（那样会被读成「这首坏了」）。
+   ⚠️ 它同时也是 `aria-hidden` + `pointer-events:none`：对读屏与键盘**不该存在**
+      （占位不是内容）。见 hud.js 的 renderList。 */
+.pl__row--ph { pointer-events: none; }
+.pl__row--ph .pl__tcover { border-style: dashed; border-color: var(--hud-ice-w); background: none; }
+.pl__row--ph .pl__tcover::after { display: none; }
+.pl__slot { flex: 1 1 auto; max-width: 58%; height: 2px; border-radius: 2px;
+  background-image: repeating-linear-gradient(90deg,
+    var(--hud-ice-w) 0 9px, transparent 9px 15px); }
+/* 一行里是**两枚兄弟按钮**：左边整流「选中这一首」，右边那枚是收藏。
+   ⚠️ 不能把收藏塞进选中按钮里 —— `button` 套 `button` 是非法 HTML（hud.js 里有同样的注记）。 */
+.pl__trk { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 9px;
+  padding: 0; cursor: pointer; font: inherit; text-align: left; color: inherit; background: none; border: 0; }
+.pl__tcover { position: relative; width: 34px; height: 34px; flex: none; border-radius: 4px;
+  border: 1px solid var(--hud-edge); }
+/* 封面母题与帖子缩略图同源（同心环 + 金十字），底色由 JS 用 coverGradient() 内联给出 */
+.pl__tcover::after { content: ''; position: absolute; inset: 0;
+  background-image:
+    radial-gradient(ellipse 60% 42% at 68% 38%, transparent 0 46%, var(--hud-ice-s) 46% 50%, transparent 50%),
+    linear-gradient(var(--hud-gold-w), var(--hud-gold-w)) 26% 70% / 8px 1.3px no-repeat,
+    linear-gradient(var(--hud-gold-w), var(--hud-gold-w)) 26% 70% / 1.3px 8px no-repeat; }
+.pl__tmeta { min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.pl__tmeta b { font-family: var(--font-round); font-size: 13px; font-weight: 600; color: var(--hud-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl__tmeta span { font-family: var(--font-round); font-size: 12px; color: var(--hud-ice-s);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl__fav { flex: none; width: 30px; height: 30px; display: grid; place-items: center; padding: 0;
+  cursor: pointer; font: inherit; background: none; border: 0;
+  color: var(--hud-ice-w); transition: color .16s var(--ease), transform .16s var(--ease); }
+.pl__fav svg { width: 17px; height: 17px; }
+.pl__fav:hover { color: var(--hud-gold-s); transform: scale(1.12); }
+.pl__fav[aria-pressed="true"] { color: var(--hud-gold-s); }
+.pl__fav[aria-pressed="true"] svg { fill: currentColor; }
+.pl__empty { font-family: var(--font-round); font-size: 12px; color: rgba(207, 224, 255, .6); padding: 6px 5px; }
+
+/* ============ 响应式 ============ */
+@media (max-width: 1120px) {
+}
+/* ---- 底部 HUD（1/2）：≤900 起让功能键**横滑**，而不是把键改小 ----
+   把 42px 改成 38px 会让「42px 正圆」的约定失效，而实测 ≤900 下
+   「9 枚 42px + 仪器盘 + 播放器」还放得下。真放不下的从这一档起横滑。
+   ⚠️ `min-width: 0` 不能少：flex 项默认不肯收缩，少了它 `overflow-x: auto` 形同虚设
+   （同一条坑在 `_mock_nav.html` 与 `.nav2__nav` 上各踩过一次）。 */
+@media (max-width: 900px) {
+  /* 立绘收一档（高度 190、宽上限 150）。⚠️ 只改令牌 ——
+     实际尺寸由 `fitPt()` 重算，文本框的 `padding-left` 也跟着走，一个字都不用改。
+     ⚠️ **窄屏起立绘改成「坐在功能栏之上」（`bottom: var(--ui-h)`），不再贴屏幕底**：
+        实测 375 下功能栏那排键从 **x=18** 就开始了（`flex-start` + 换行 ⇒ 几乎铺满整宽），
+        左下角**根本没有空地** —— 贴底的话立绘会被键的垫板整块盖住（实测只露出 9px）。
+        这是「窄屏上没有左下角可用」的诚实落法，不是偷懒。 */
+  .hud { --pt-h: 190px; --pt-ar: 1; --pt-gap: 12px; }
+  .hud__pt { bottom: var(--ui-h); border-radius: 0 10px 10px 0; }
+  .hud__body > .hud__in { padding: 8px 14px 10px calc(var(--pt-w, 0px) + var(--pt-gap)); }
+  .hud__ui > .hud__in { padding: 0 14px 9px; }
+  /* 窄屏名牌行只剩「名字 + 星等」—— 三条信息挤进来会把这行挤成两行，把整条框顶高。
+     它们没丢，在展开的观测证里；这也是「直接显示一些、展开看全部」那条要求的窄屏落法。 */
+  .hud__info { display: none; }
+  /* 观测证卡片：窄屏铺满整宽，并**只让卡片自己滚** —— 底栏在手机上本来就占小半屏，
+     卡片再往上长会把页面顶穿。`max-height` 是这里唯一能收住它的东西。 */
+  .hud__card { left: 14px; right: 14px; width: auto; max-height: min(56vh, 420px); overflow-y: auto; }
+  /* ⚠️ **≤900：功能栏退回流式排布**（撤销上面那套绝对居中）。
+     绝对居中在窄屏会**和右边那组（仪器盘 / 胶囊）撞上** —— 整排就那么宽，
+     居中放一块 400px 的功能栏，右边再站一组两百多 px，必然重叠。
+     退回流式之后它们会**换行**而不是重叠；代价是这一档里功能栏不再「正中间」，
+     而是「在剩余空间里居中」（略偏左）—— 这在窄屏上是唯一不重叠的选择。 */
+  .keys { position: static; left: auto; right: auto; bottom: auto;
+    width: auto; max-width: none; margin: 0 auto; }
+  /* 窄屏退回流式之后，这一层要恢复「从左排起」，否则整排又被推到右边去 */
+  .hud__ui > .hud__in { justify-content: flex-start; }
+  /* 格子缩一档。⚠️ `--k-tile` 必须写在 `:root` 上 —— `.hud__lock` 的宽高也读它，
+     只写在 `.key` 上锁那一格就不跟着缩了。 */
+  :root { --k-tile: 36px; }
+}
+/* ---- 底部 HUD（2/2）：≤640 让仪器盘让位给真正能按的键 ---- */
+@media (max-width: 640px) {
+  /* 立绘再收一档，同样坐在功能栏之上（理由见 ≤900 那一段）。 */
+  .hud { --pt-h: 175px; --pt-ar: 1; --pt-gap: 12px; }
+  .hud__body > .hud__in { padding: 8px 12px 10px calc(var(--pt-w, 0px) + var(--pt-gap)); }
+  .hud__pt__fb { font-size: 34px; }
+  .hud__nm { padding-right: 40px; }
+  .dial { display: none; }             /* 盘一藏，--ui-h 由 JS 重算（下排只剩功能栏 + 歌单胶囊） */
+  /* 观测证卡片：375 下整宽 ⇒ 三列会被压到 ~105px 一格，而「最喜欢的图片」那三张就要 150px
+     ⇒ 脚部落成一列。卡片左边距跟 `.hud__in` 的 12px 对齐。 */
+  .hud__card { left: 12px; right: 12px; }
+  .hud__card__foot { grid-template-columns: minmax(0, 1fr); gap: 8px 0; }
+  /* 下排更挤：窄屏一行放不下「功能栏 + 胶囊」⇒ 由 `flex-wrap` 让胶囊掉到第二行 */
+  .hud__ui > .hud__in { gap: 8px 10px; padding: 0 12px 10px; }
+  /* 格子缩到 34px。居中排布下两侧自然留白，手机上不会有人物头像 ⇒ 不用再管缩进。
+     一行排不下时由 `.keys` 的 `flex-wrap: wrap` **自动换行**（窄屏会变成两行），
+     而不是把格子缩到看不清。 */
+  :root { --k-tile: 34px; }
+  .key > svg, .hud__lock svg { width: 14px; height: 14px; }
+  .pl__meta { display: none; }
+  .pl__chip { padding: 4px; }
+  /* ⚠️ 窄屏：面板**不再挂在歌单胶囊右边**。第 7 轮把胶囊挪到了整排的右侧，
+     362px 宽的面板锚在它右边会**伸出屏幕左沿**（375 下实测左边缘被裁，
+     连页签第一个字都缺）。改成**贴着整排**的浮层：`.pl` 去掉定位，
+     面板的包含块就升到 `.hud__ui`（它本来就是 relative），于是
+     `left/right: 12px` 直接贴着屏幕两边、`bottom: calc(100% + 10px)` 抬到整条 HUD 之上。
+     高度不用手算 —— `--pl-rows` 那套照旧，列表仍是固定 6 行。 */
+  .pl { position: static; }
+  .pl__panel { left: 12px; right: 12px; width: auto; }
+}
+@media (max-width: 900px) {
+  .nav { display: none; }
+
+  /* 首屏：公告 / 轮播 各占满一行，统计两列 */
+  .hero { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .hero__ann, .ban, .op, .op__recent, .hero__tags { grid-column: span 4; }
+  .ban { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* 流星带：`flex-wrap` + 内容驱动宽度已经提到基础规则里常开 ——
+     原先只写在 ≤900 这一个断点，于是 905~1070px 这段「三不管地带」没有保护
+     （格子被压到 39px 以下、尾巴插进左边亮头，见 .shower__m 处的完整说明）。
+     窄屏不再需要单独覆盖，这里只留面板头那一条。 */
+  /* 面板头右槽是 flex:none，不会收缩：长说明在窄屏会把卡面顶出横向溢出。藏掉中段。 */
+  .shower__meta-mid { display: none; }
+
+  /* 子板块：取消跨行，避免出现大片空白 */
+  .bv__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* 合并板块：两半改成上下摞（各占满一行），竖线改成靠各自板块头的下边线分隔。
+     ⚠️ 选择器必须带 .bv--m 才压得住上面那条 .bv--m .bv__grid{4 栏}（同优先级才比顺序）。 */
+  .bv--m .bv__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bv__half { grid-column: span 2; }
+  .bv__half + .bv__half::before { display: none; }
+  /* 窄卡：窄屏下两半各自整幅（约 860px），4 张一行仍有约 204px，保持一行即可 */
+  .sc--big { grid-column: span 2; grid-row: auto; }
+  /* ⚠️ span 4 必须跟着网格列数改。2 列网格里 span 4 会造出 2 个**隐式列**，
+     整个网格被撑成 4 列，卡片高度当场炸到 1572px —— 实测踩过。 */
+  .recblock { grid-column: span 2; }
+  .sc--big .sc__list { justify-content: flex-start; }
+
+  /* 12 栏降到 2 栏：主卡 span 2（整幅）、四张小卡各 span 1 → 2×2。
+     比例仍由 aspect-ratio 管，不需要行高。 */
+  .rec { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rec__card { grid-column: span 1; }
+  .rec__card--big { grid-column: span 2; grid-row: auto; }
+
+  .bv__quote { margin-left: 0; padding-right: 0; border-right: 0; padding-left: 13px; border-left: 3px solid var(--y500); text-align: left; }
+}
+@media (max-width: 640px) {
+  body { font-size: 15px; }
+  .wrap { width: calc(100% - 24px); }
+  .search { display: none; }
+  .hero { gap: 10px; }
+  .hero__ann { align-items: flex-start; }
+  .ban { grid-template-columns: minmax(0, 1fr); }
+  .bv__grid { grid-template-columns: minmax(0, 1fr); }
+  .sc--big, .sc--mid { grid-column: span 1; }
+  .recblock { grid-column: span 1; }
+  .bv--m .bv__grid { grid-template-columns: minmax(0, 1fr); }
+  .bv__half { grid-column: span 1; }
+  /* 375 下整幅只有约 336px，4 张一行会掉到 74px —— 这里必须降到两列（161px） */
+  .bv__halfGrid--narrow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rec { grid-template-columns: minmax(0, 1fr); }
+  .rec__card--big { grid-column: span 1; }
+  /* 流星带在窄屏再收一档内边距，让每格多挤几个像素给尾巴 */
+  .shower { padding: 11px 10px 9px; }
+  .shower__streak { height: 7px; }
+  .cst { padding: 12px 12px 8px; }
+  .cst__hint { margin-left: 0; }
+}
+
+/* ============ 结构性轨道 ============
+   弧线是网格的绝对定位子元素（脱离文档流，不占网格单元格）。
+   星点由 JS 按实测的卡片列中心投影到弧上。 */
+.orbit {
+  /* ⚠️ height 必须与 viewBox 的高一致（46）：替换元素在 left/right 都设死时，
+     Chrome 会按**固有宽高比**反推宽度 —— 这里写 50 而 viewBox 是 46，
+     就会算出 46→50 的放大，弧比栅格宽出 114px，整页横向溢出（2026-11-06 实测 1488>1440）。 */
+  position: absolute; left: 0; right: 0; top: -46px; height: 46px;
+  overflow: visible; pointer-events: none;
+  color: hsl(var(--hue, 218) 68% 60%);
+}
+.orbit__line { opacity: .72; }
+/* 大轨道：**虚线 + 不做描边生长**（v3p 的 .chap__arc 是 `stroke-dasharray: 2 5`）。
+   ⚠️ 生长动画靠 dashoffset，和虚线一起用会变成「蚂蚁行军」⇒ 大弧直接写死虚线。
+      小轨道（格子条里的 .fs__arc）走的是另一条选择器，仍是实线 + 生长。 */
+.js .orbit .orbit__line { stroke-dasharray: 2 5; stroke-dashoffset: 0 !important; transition: none;
+  /* 加载动画：从左裁到右（clip 扫开，不是 dashoffset 生长 —— 虚线配 dashoffset 会蚂蚁行军）。
+     .bv.is-drawn 触发后扫开，像「绘制星轨」。星点错峰淡入 + 卡片从弧下抬起 ⇒ 三段式进场。 */
+  clip-path: inset(0 100% 0 0); }
+.bv.is-drawn .orbit .orbit__line { clip-path: inset(0 0 0 0); transition: clip-path .9s var(--ease) .25s; }
+/* 小轨道（格子条 .fs__arc）保持实线 + dashoffset 生长（不是大轨道的 .orbit .orbit__line）。 */
+.js .orbit__line { stroke-dasharray: 1200; stroke-dashoffset: 1200; transition: stroke-dashoffset 1.5s var(--ease) .15s; }
+.bv.is-drawn .orbit__line { stroke-dashoffset: 0; }
+.orbit__spark { color: hsl(var(--hue, 218) 76% 52%); }
+.js .orbit__spark { opacity: 0; transition: opacity .5s var(--ease); }
+.bv.is-drawn .orbit__spark { opacity: 1; }
+.orbit__planet { color: hsl(var(--hue, 218) 80% 56%); }
+
+/* ── 卡片进场：从弧下方抬起 + 错峰褪入（晚于轨道扫开）── */
+/* ⚠️ `to` 必须显式写：只写 from 时，隐式终态取元素自己的计算值 —— 而
+   `.js .sc { opacity: 0 }` 正是 0，动画会变成 0→0 跑完再被 `both` 冻在 0，
+   卡片永远不出现（2026-11-07 探针实测 D7）。 */
+@keyframes scIn { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+.js .sc { opacity: 0; }
+.bv.is-drawn .sc { animation: scIn .6s var(--ease) both; animation-delay: var(--dl, 0s); }
+/* 滚动进入的块（非首块）走快档：动画压到 .4s —— 首块的「加载剧场」保留 .6s */
+.bv.is-drawn.is-quick .sc { animation-duration: .4s; }
+
+/* ============ 帖子缩略图 ============
+   只有「大卡」和「通栏卡」配图 —— 卡片自身的尺寸层级就是配图的依据。
+   .thumb 自带渐变背景，图片没出来时露出的就是它。 */
+.thumb {
+  display: block; position: relative; overflow: hidden;
+  border-radius: 8px; background-size: cover; background-position: center;
+}
+.thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* 退回渐变时补一层程序化「轨道环」封面，免得太空。
+   只画几个星点时，缩到卡片尺寸看跟纯渐变没区别 —— 所以这里补上同心椭圆环
+   + 金色十字星芒，和 covers/ 里那些真 SVG 封面同一套母题。 */
+.thumb.is-fallback::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    /* 三圈同心轨道环 */
+    radial-gradient(ellipse 68% 46% at 66% 40%, transparent 0 48.5%, rgba(255,255,255,.22) 48.5% 50%, transparent 50%),
+    radial-gradient(ellipse 48% 32% at 66% 40%, transparent 0 48%, rgba(255,255,255,.18) 48% 50%, transparent 50%),
+    radial-gradient(ellipse 30% 20% at 66% 40%, transparent 0 47%, rgba(255,255,255,.15) 47% 50%, transparent 50%),
+    /* 金色十字星芒 */
+    linear-gradient(rgba(246,216,137,.85), rgba(246,216,137,.85)) 32% 68% / 10px 1.6px no-repeat,
+    linear-gradient(rgba(246,216,137,.85), rgba(246,216,137,.85)) 32% 68% / 1.6px 10px no-repeat,
+    /* 星点 */
+    radial-gradient(1.5px 1.5px at 22% 28%, rgba(255,255,255,.85), transparent 55%),
+    radial-gradient(1.3px 1.3px at 64% 16%, rgba(255,255,255,.7), transparent 55%),
+    radial-gradient(1.6px 1.6px at 79% 64%, rgba(255,255,255,.65), transparent 55%),
+    radial-gradient(1.2px 1.2px at 38% 76%, rgba(255,255,255,.6), transparent 55%);
+}
+/* 大卡主图：出血到卡片左右与上边缘（圆角由 .sc 的 overflow:hidden 裁） */
+/* 大卡封面：必须是「首个」出血子元素。出血量严格等于 .sc--big 的 padding（18/20），
+   于是图顶边正好落在卡片内容区顶端，圆角由卡片自己的 overflow:hidden 按内圆角裁出
+   —— 不依赖任何行高巧合。旧写法把负外边距加在第 2 个子元素上，把图拉进了标题行。 */
+.sc__cover {
+  position: relative; overflow: hidden;
+  flex: 1;                          /* 吃掉剩余高度 → 卡片高度自动与右侧两列对齐 */
+  min-height: 196px; max-height: 360px;
+  margin: -13px -17px 11px;      /* 出血量必须恒等于 .sc--big 的 padding，否则图会顶进标题行 */
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.sc--big .thumb--hero { position: absolute; inset: 0; border-radius: 0; }
+
+/* ---- 大卡封面：5 张轮播（JS 驱动，可点）----
+   原来用 CSS 关键帧 + animation-delay 错开，但那样做不了「手动跳一张」：
+   改 delay 会让动画按新相位重排，跳完顺序就乱了。现在 JS 只给当前层加 `.is-on`，
+   淡入淡出交给 transition；自动播的节奏由 JS 定时器管（app.js 的 heroCover）。 */
+.sc__cover { cursor: pointer; }               /* 整块可点 = 换下一张 */
+.sc__cover .cover__l {
+  position: absolute; inset: 0; border-radius: 0;
+  opacity: 0; transition: opacity .55s var(--ease);
+}
+.sc__cover .cover__l.is-on { opacity: 1; }
+
+/* 指示器用**本站的星形**（与星等同一枚 `#i-star`）：当前那张是金色发光的大星，
+   其余是半透明白色小星。圆点在本站没有任何语义出处，星形才是全站的「热度」符号。 */
+.cover__pips {
+  position: absolute; z-index: 3; right: 10px; bottom: 10px;
+  display: flex; align-items: center; gap: 2px;
+}
+.cover__pip {
+  display: grid; place-items: center; width: 26px; height: 26px;
+  padding: 0; border: 0; background: none; cursor: pointer;
+  color: rgba(255, 255, 255, .42);
+  transition: color .2s var(--ease), transform .2s var(--ease);
+}
+.cover__pip svg { width: 11px; height: 11px; fill: currentColor; stroke: none; }
+.cover__pip:hover { color: rgba(255, 255, 255, .85); }
+.cover__pip[aria-current="true"] {
+  color: var(--y500); transform: scale(1.34);
+  filter: drop-shadow(0 0 5px rgba(246, 216, 137, .8));
+}
+
+/* 压在封面上的标题：垫一层由下往上的深色遮罩保证对比度。
+   标题必须抬 z-index —— ::after 在树序上排在它后面，不抬层就会被压暗。 */
+.sc__cover::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to bottom,
+    rgba(8, 14, 40, .74) 0%, rgba(8, 14, 40, .40) 28%,
+    rgba(8, 14, 40, .10) 50%, rgba(8, 14, 40, .90) 100%);
+}
+.sc__head--over { position: relative; z-index: 1; margin: 0; padding: 16px 18px 0; }
+.sc__head--over .sc__name { color: #fff; }
+.sc__head--over .sc__sub  { color: rgba(255, 255, 255, .84); }
+.sc__head--over .mag      { color: rgba(255, 255, 255, .9); }
+/* 星等数字：基类 .mag b 的 --y-ink(深棕) 比上面的 .mag 更具体，
+   不单独覆盖的话深棕压深底几乎不可见。换成浅金，既醒目又保持金色系。 */
+.sc__head--over .mag b    { color: var(--y400); }
+/* 封面上的头条帖：把图片空间用真实内容填满 */
+.sc__lead { position: relative; z-index: 1; display: block; padding: 0 18px 16px; }
+.sc__leadT {
+  display: block; font-family: var(--font-display);
+  font-size: clamp(15px, 1.35cqw, 20px); font-weight: 700; line-height: 1.45;
+  color: #fff; text-shadow: 0 1px 12px rgba(0, 0, 0, .55);
+}
+.sc__lead:hover .sc__leadT { text-decoration: underline; text-underline-offset: 3px; }
+.sc__leadM {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  margin-top: 7px; font-size: 12px; color: rgba(255, 255, 255, .88);
+}
+.sc__leadM .by { color: #fff; font-weight: 500; }
+.sc__leadM i { font-style: normal; opacity: .55; }
+.sc__leadM .pull { display: inline-flex; align-items: center; gap: 3px; }
+.sc__leadM .pull .i { width: 11px; height: 11px; }
+
+/* 通栏卡的小图（.thumb--mini）与「左图右文」的帖子行（.sc__thread--thumb）
+   随 .sc--wide 一起删除 —— 首页不再有通栏卡，这两者已无消费者。
+   大卡封面用的 .thumb--hero 仍在（见上方 .sc--big .thumb--hero）。 */
+
+/* ============ 星等 · 光变曲线弹层 ============ */
+.mag--lc { cursor: pointer; border-radius: 6px; }
+.mag--lc:focus-visible { outline: 2px solid var(--c700); outline-offset: 3px; }
+.mag--lc[aria-expanded="true"] { color: var(--link); }
+.lc {
+  position: fixed; z-index: 80; width: 256px;
+  padding: 12px 14px 10px; border-radius: 12px;
+  border: 1.5px solid var(--c400); background: var(--surface); box-shadow: var(--shadow-lg);
+}
+.lc__t { display: block; font-family: var(--font-display); font-size: 13px; line-height: 1.45; color: var(--ink-deep); margin-bottom: 7px; }
+.lc__svg { display: block; width: 100%; height: auto; }
+.lc__area { fill: hsl(44 92% 60% / .16); }
+.lc__line { fill: none; stroke: var(--c700); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.lc__now { fill: var(--y600); stroke: #fff; stroke-width: 1.4; }
+.lc__note { display: block; margin-top: 6px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); }
+.lc__note b { color: var(--y-text); font-weight: 700; }
+
+/* ============ 动效克制 ============ */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  #sky { display: none; }
+  .js .orbit__line { stroke-dashoffset: 0; }
+  /* 大轨道 clip-path 进场：RM 下直接撤掉裁剪，不做扫开动画 */
+  .js .orbit .orbit__line { clip-path: none !important; }
+  .js .orbit__spark { opacity: 1; }
+  /* 卡片进场：RM 下直接可见，animation-duration:.01ms 的全局兜底在 from 态
+     会让 opacity:0 冻住 —— 必须显式重置，和 .fs__t 同一个教训 */
+  .js .sc { opacity: 1 !important; animation: none !important; }
+  .cstStar { animation: none !important; }
+  /* 格子条。.js 前缀 + !important 都要：初态是 .js .fs__t { opacity:0 }（0,2,0），
+     写成 .fs__t { opacity:1 }（0,1,0）会输掉 —— 之前 .tgrid .tc 就是这么「整页卡片全空」
+     却报了 PASS 的。这里连终态一起复位，不靠 animation-duration:.01ms 那条全局兜底。 */
+  .js .fs__t { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .js .fs__t--cap svg { filter: none; }
+  .js .fs__arc .orbit__line { stroke-dashoffset: 0; }
+  .fs__tel { transition: none; }
+  .fs:hover .fs__tel { transform: none; }
+  /* 星点整组拿掉。不是 animation:none 就够 —— 那样点会静止停在弧上某处。
+     display:none 最不含糊。 */
+  .fs__sparks { display: none; }
+  /* 暮色幕整层关掉，切主题走 theme.js 里的即时分支 */
+  .fx__veil { animation: none; opacity: 0; }
+  /* 背景轮播必须显式关掉，不能靠上面那条全局 animation-duration:.01ms 兜底 ——
+     0.01ms 配 infinite 是「每秒循环十万次」，7 层彼此错开 6s 的 delay 还在，
+     结果不是静止而是**频闪**。改成静止停在第一张：animation:none 会连
+     animation-delay 一起复位（简写带 !important 时全部长手属性都带），所以不会残留。 */
+  .bg__l { animation: none !important; opacity: 0; transform: none; }
+  .bg__l:nth-child(1) { opacity: 1; }
+  /* 流星带的入场（亮头斜射进来 + 尾巴展开）。基规则**就是终态**、起始态写在
+     @keyframes from 里，所以 animation:none 直接落在排好的样子上，不会留半路。
+     上面那条全局 animation-duration:.01ms 其实也能落到终态（iteration 是 1、不是
+     infinite），这里显式写死，理由与 .bg__l 那条相同：不靠兜底。 */
+  .shower__streak, .shower__tail { animation: none !important; }
+  /* 大卡封面的 5 张轮播已经是 **JS 驱动**，没有 CSS 动画要关（原来那版靠关键帧，
+     这里得显式 `animation:none`，否则全局 .01ms + infinite 会频闪）。
+     RM 下由 app.js 的 heroCover 判断：不自动播，但**手动切换保留** ——
+     用户主动发起的切换不是「未经请求的运动」，而且这一块里全局那条
+     `transition-duration:.01ms !important` 会让切换变成瞬时。 */
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   观测窗（悬浮窗）+ 看图窗  —— v2p/viewer.js
+   ════════════════════════════════════════════════════════════════════
+   用户要的是一套「**像 Discuz 那样的图片查看系统**」：帖子里点截就能放大、翻页，
+   而且「悬浮窗也要做成符合本站的，**标题栏要能拖**」。
+   ⇒ 落成两件东西：通用悬浮窗 `.win`（标题栏即拖动手柄）+ 看图窗 `.okv`（装在里面）。
+
+   一个图形都不新造，全部从站内母题长出来：
+     · 外框 / 底 / 硬投影 → **观测记录牌的配方**（星野三件套 + 2px `--hud-edge` + `4px 4px 0`）
+     · 标题栏那把**刻度尺** → 与立绘框顶边同一条（站点 `.pl__slot` 的语汇）
+     · 右上角**星芒** → 站点 `<symbol id="i-stars4">` 那枚（导航「当前页」用的同一个记号）
+
+   ⚠️ 层叠：内容(1) < topbar(50) < hud(100) < toast(120) < **veil(150) < win(151)** < fx(200)。
+      放在 HUD 之上（它是模态），放在 `.fx`（流星层）之下（那层是氛围，本来就该在最上）。
+   ⚠️ 两处「不位移」的纪律这一轮都要守住（站点 §18.8）：
+      ① 开窗锁滚动**不能**只写 `overflow: hidden` —— 滚动条一消失整页会横移一个滚动条宽；
+         所以量出宽度补成 body 的 padding-right（`--sbw`）。
+      ② 窗口用 `left/top` 的像素坐标定位，不用 `translate(-50%,-50%)` 居中 ——
+         拖动直接改坐标，两套混写会在第一次拖动时跳一下。 */
+
+.win-veil { position: fixed; inset: 0; z-index: 150; background: rgba(6, 12, 28, .52); }
+/* 宽屏才上模糊：满屏 backdrop-filter 在手机上很贵，而窄屏本来也看不清底下那页还挂着什么 */
+@media (min-width: 900px) {
+  .win-veil { -webkit-backdrop-filter: blur(7px) saturate(1.2); backdrop-filter: blur(7px) saturate(1.2); }
+}
+.win-veil[hidden] { display: none; }
+html.is-viewing { overflow: hidden; }
+html.is-viewing body { padding-right: var(--sbw, 0px); }
+
+.win { position: fixed; z-index: 151; width: min(1120px, calc(100vw - 40px));
+  /* 拉到端头时两端各多放多少余量 —— 让「看见一条暗底」在两个方向上一样多。
+     取**网格的一格**（26px，与窗口那层坐标网格同一条），不是随手拍的一个数。 */
+  --okv-bleed: 26px;
+  border-radius: 6px; overflow: hidden;
+  /* ⚠️ 底上叠一层**天球坐标网格** —— 这是用户 2026-10-11 选定的那版（「星图窗」）：
+     整扇窗像一页星图，标题栏与底栏的高度都取网格的整数格。
+     网格线走 `--hud-gold-w`（站点那条 .42 的**线**令牌），不是新颜色。 */
+  background-image:
+    linear-gradient(var(--hud-gold-w) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hud-gold-w) 1px, transparent 1px),
+    var(--hud-stars), var(--hud-cloud), var(--hud-deep);
+  background-size: 26px 26px, 26px 26px, auto, auto, auto;
+  border: 2px solid var(--hud-edge);
+  box-shadow: 4px 4px 0 var(--hud-shadow), inset 0 0 0 1px var(--hud-ice-w), 0 18px 48px rgba(4, 10, 26, .38); }
+.win[hidden] { display: none; }
+/* ⚠️ 内层那道 1px `--hud-ice-w` 发丝线与立绘框同一条理由：外层 `--hud-edge` **不随主题翻**，
+   暗色下会跟背景糊在一起 ⇒ 补一道**会翻**的发丝线，两种主题下框都立得住。（§18.32 ③b） */
+
+/* ── 标题栏：**它就是拖动手柄** ──
+   视觉上必须看得出「能抓」：`cursor: grab` + 中间那把**尺**当防滑纹 + 拖动时换 `grabbing`。
+   ⚠️ `touch-action: none` 不能省 —— 触屏上不写它，pointermove 会被浏览器的滚动手势抢走，
+      表现是「手机上拖不动」（鼠标上完全正常，所以很容易漏）。 */
+/* ⚠️ 高度 46 → **58**：标题栏里现在装的是站里的格子条（`.fs`，24px 格 + 望远镜站位），
+   46px 塞不下。`padding-left` 给到 6px —— 望远镜是从条的左缘探出去的（`.fs` 自带站位内边距）。 */
+.win__bar { display: flex; align-items: center; gap: 10px; padding: 0 8px 0 6px; height: 58px;
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+  border-bottom: 2px solid var(--hud-edge);
+  /* 标题栏自己也是**同一张网格**（与整扇窗对齐，不是浮在上面的一条带）+ 一层极淡的板 */
+  background:
+    linear-gradient(var(--hud-gold-w) 1px, transparent 1px) 0 0 / 26px 26px,
+    linear-gradient(90deg, var(--hud-gold-w) 1px, transparent 1px) 0 0 / 26px 26px,
+    linear-gradient(180deg, var(--hud-plate-hi), var(--hud-plate)); }
+.win.is-dragging .win__bar { cursor: grabbing; }
+/* ⚠️ `min-width: 0` + `flex: 1 1 auto` 是「长标题不撑爆、短标题不塌」的那一对。
+   内容不再是文字、而是站里的格子条（见下面 .win .fs）。 */
+.win__t { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; overflow: hidden; }
+/* ⚠️⚠️ `margin-left: auto` 不能省：标题栏里原来靠那把**刻度尺**（`flex: 1 1 auto`）把后面的控件顶到右边。
+   尺一撤（或将来哪一版把它藏掉），末尾的关闭键就**整排塌到左边**贴在标题后面 ——
+   这是真的发生过：六版里凡是没有那把尺的，✕ 全跑到了标题右边一点点的位置。
+   加一对 auto 外边距之后，**无论中间有没有撑条，控件都靠右**。 */
+.win__x { margin-left: auto; }
+/* 窗口里的格子条：那一整条是按**视口宽**算边长的（`style.css` 的 `.fs`），
+   进了窗口要按窗口的尺度收一档；其余（望远镜、逐格块、配色、逐格点亮）全部照搬。
+   ⚠️ 边长**跟着格数走**（与站里那条 `.fs` 同一个反解公式），不能定死 26px：
+      标题最长 12 字 + 望远镜格 + 星环格 = 14 格，定死 26 时要 406px，而窄窗口的标题栏
+      只有 ~300 ⇒ 末端的**星环格会被 `overflow: hidden` 整格裁掉**，读起来就是一条断头的格子条
+      （2026-11-07 用户报的「不完整」，在 375 下连 5 格都放不下）。
+      26px 仍是上限 —— 逐格字正好压在窗口那层 26px 的坐标网格线上。
+      64px = 窗口左右边框 4 + 标题栏内边距 14 + 间隙 10 + 关闭键 30 + 条自身 5，再留 1px 余量。 */
+.win .fs { --tile: clamp(15px, calc((min(1120px, 100vw - 40px) - 64px) / (var(--n, 7) + 1.46)), 26px); }
+.win .fs__bar { padding: 1.5px; border-radius: 4px; }
+.win .fs__t { font-weight: 700; }
+/* ⚠️ `.win__rule`（刻度尺）与 `.win__seal`（星芒）**整条删掉了**：
+   用户 2026-10-11「你聊天框头像用这个元素，这里也用这个，你是往一个地方薅羊毛啊」——
+   那两样已经长在立绘框上了。窗口的标题栏现在由**站里的格子条**承担（望远镜 + 逐格字）。 */
+.win__x { flex: none; width: 30px; height: 30px; display: grid; place-items: center;
+  padding: 0; cursor: pointer; font: inherit; border-radius: 6px; background: none;
+  color: var(--hud-ink); border: 1px solid var(--hud-ice-w);
+  transition: border-color .16s var(--ease), background .16s var(--ease), color .16s var(--ease); }
+.win__x .i { width: 15px; height: 15px; stroke-width: 2.1; }
+/* 关闭键**贴右上角**（用户点名），并且是**直角** —— 与那层网格同一套几何。
+   ⚠️ `margin-left: auto` 见上面那条：它才是「不管中间有没有撑条，控件都靠右」的保证。 */
+.win__x { border-radius: 0; }
+.win__x:hover { border-color: var(--hud-gold-s); background: var(--hud-gold-tint); color: var(--hud-gold-s); }
+.win__x:focus-visible { outline: 2px solid var(--hud-gold-s); outline-offset: 2px; }
+
+/* ── 看图窗 ── */
+/* 舞台底用 `--hud-void`（深空，**不翻主题**）：看图这一格两套主题下都该是深底 ——
+   照片 / CG 压在深底上才准，浅底会把画面里的暗部看飘。 */
+.okv__stage { position: relative; height: clamp(260px, 62vh, 640px); overflow: hidden;
+  display: grid; place-items: center; background: var(--hud-void);
+  cursor: grab; touch-action: none; }
+.okv__stage.is-panning { cursor: grabbing; }
+/* ⚠️⚠️ 用**铺满舞台的盒子 + contain**，不要用 `max-width/max-height: 100%`。
+   两者的差别在**盒子溢出时会不会真的居中**：
+     · `max-width/max-height: 100%`：盒子按图片比例缩，但可能**仍然比舞台高**
+       （实测 956×538 vs 舞台 956×486）；而「比容器大的元素」在 `place-items: center` 下
+       **不会被真正居中** —— 溢出只往一侧走（不能跑到容器上方），于是它的中心比舞台中心**低 26px**。
+       夹取公式假设两者同心 ⇒ 两端差 26px ⇒ **一边能露出暗底、另一边顶死**（用户报的就是这个）。
+     · `width/height: 100%`：盒子**恒等于舞台** ⇒ 中心恒重合；图在里面 `contain` 居中、永不溢出。
+   ⇒ 夹取再按**图片自身的宽高比**反算「真正看得见的那块」，而不是按盒子算。 */
+/* ⚠️⚠️ **绝对定位铺满舞台**，不能用「网格项 + `height: 100%`」。
+   舞台是 `display: grid`，它的**隐式行是 `auto`** —— 行会被内容撑大：
+   实测图片 538 高时那一行就变成 538，于是 `height: 100%` 解析成 **538**（自己撑自己），
+   盒子比舞台（486）还高 ⇒ 「比容器大的元素不会被真正居中」那一课又回来了。
+   `position: absolute; inset: 0` 的含块是舞台的**内边距盒**（确定值）⇒ 盒子**恒等于舞台**，
+   中心与舞台中心恒重合；图在里面 `contain` 居中、永不溢出。 */
+.okv__im { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block;
+  transform-origin: center center; user-select: none; -webkit-user-drag: none; }
+.okv__im.is-anim { transition: transform .22s var(--ease); }
+
+/* 底栏：**翻页居中、提示浮到右侧**。
+   ⚠️ 不能用「提示 `margin-left: auto` + 翻页 `margin: 0 auto`」那套 —— 那样翻页是在
+      **剩余空间**里居中，右边被提示占掉多少，它就往左偏多少（用户要的是**底部中间**）。
+      ⇒ 提示改成 `position: absolute` 脱流，翻页在整条里用 `justify-content: center` 居中，
+        居中因此是**真的居中**，与提示的宽度无关（窄屏提示本来就藏起来了）。 */
+.okv__foot { position: relative; display: flex; align-items: center; justify-content: center;
+  gap: 10px; padding: 13px 14px;
+  border-top: 1px solid var(--hud-ice-w); }   /* 13 ≈ 半格：底栏上缘正好落在网格线上 */
+.okv__nav { flex: none; width: 32px; height: 32px; display: grid; place-items: center;
+  padding: 0; cursor: pointer; font: inherit; border-radius: 6px; background: none;
+  color: var(--hud-ink); border: 1px solid var(--hud-ice-w);
+  transition: border-color .16s var(--ease), background .16s var(--ease), color .16s var(--ease); }
+.okv__nav .i { width: 16px; height: 16px; stroke-width: 2.1; }
+.okv__nav:hover { border-color: var(--hud-gold-s); background: var(--hud-gold-tint); color: var(--hud-gold-s); }
+.okv__nav:focus-visible { outline: 2px solid var(--hud-gold-s); outline-offset: 2px; }
+.okv__nav[hidden] { display: none; }
+.okv__n { flex: none; min-width: 4.5em; text-align: center; font-family: var(--font-mono);
+  font-size: 12.5px; color: var(--hud-ink); font-variant-numeric: tabular-nums; }
+.okv__hint { position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  font-size: 11.5px; color: var(--hud-ink-soft); pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .okv__im, .win__x, .okv__nav { transition: none; }
+}
+@media (max-width: 640px) {
+  .win { width: calc(100vw - 16px); }
+  .win__bar { height: 42px; }
+  /* ⚠️ 40% 那条是给**文字标题**（长图片名要截断）留的 —— 标题换成立绘格子条之后，
+      40%（375 下只有 136px）会把条**拦腰裁断**，末端星环格永远看不见。
+      只对「标题里装的是格子条」的那扇窗放开；报告窗之类仍是文字标题，照旧截断。 */
+  .win__t:has(.fs) { max-width: none; }
+  /* 窄窗按它自己的宽度反解边长：100vw − 16（窗口宽）− 64（条以外的东西）。 */
+  .win .fs { --tile: clamp(15px, calc((100vw - 80px) / (var(--n, 7) + 1.46)), 19px); }
+  .win__t { font-size: 13px; }     /* 文字标题仍是这一档；格子条的字号由 --tile 推 */
+  .okv__stage { height: clamp(220px, 50vh, 400px); }
+  .okv__hint { display: none; }     /* 窄屏没地方：手势本身是自明的，而提示文字占掉一整行 */
+}
+
+/* ============ 输入控件底座（第 36 轮 · 定案＝「深空视窗」夜间面）============
+   用户 2026-10-13：「这版就挺不错的，融入到网站里面去」——
+   挑中的是原型页 `_inputs.html` 的第 3 版（深空视窗）的**夜间面**；日间面被否
+   （「看不懂，也不觉得放在网站里会美观」），所以**不落日间面**：
+   这一版在亮、暗两套主题下**都是深色**，全站一个长相。
+
+   ⚠️ 为什么能这么写：`--hud-*` 那套令牌**两套主题都不翻**（HUD 一直是深色的），
+      所以「深空底 + 冰白字」在亮色主题下也成立 —— 这是这条唯一的立足点。
+   ⚠️ `html ` 前缀**不是随手加的**：本文件在 `forum.css` / `topic.css` / `auth.css`
+      **之前**加载，而 `:is(.auth__in, …)` 与 `.auth__in` 特异度打平
+      ⇒ 不加前缀就会被后加载的那三份盖掉。加一个类型选择器把特异度抬到 (0,1,1)。
+   ⚠️ `border-radius: 26px`（不是 999px）：单行框高 42px，浏览器会按规范把 26px
+      缩到半高 21px ⇒ **自动成为胶囊**；而回复框高 96px，26px 不到半高 ⇒ 还是圆角矩形。
+      一条值同时管住两种高度 —— 写 999px 的话回复框会变成一个**两端半圆的胶囊**，
+      左上角那句正文就落到填充之外了。
+   ⚠️ `color-scheme: dark`：让浏览器把原生件（select 箭头 / 数字框上下箭头 / 滚动条）
+      按深色渲染，否则会出「深底上一个小黑影」。
+   —— 2026-10-18：发帖页的标题框与标签框也接进这份名单（`.cp__in` / `.cp__tagWrap`）。
+      之前它们不在名单里，于是同一行里只有「板块」那个下拉有星海，另外两个是白板；
+      用户说的「INPUT 没有天文元素特色」就是这个缺口。本页的 `.cp__in--tag` **故意不在名单里**：
+      它是标签框内部那个**无框输入条**，画在 `.cp__tagWrap` 的星海上，自己不能再长一层皮。
+   —— 2026-11-01：私信浮窗的书写条 `.dm__ta` 接进名单（§23 的「多行」那一层）。
+      它是私信窗里唯一的新输入件，不另起材料；dm.css 只写高度 / 内边距 / 字号。
+   —— 2026-11-01 晚：举报申诉窗的 `.rp__ta`（多行）与 `.rp__sel`（理由下拉）同样接进名单，
+      理由一样：窗口里的输入件不许另起一套材料。 */
+
+html :is(.search, .auth__in, .tpForm__box, .tpRate__in, .tpRate__sel, .pg__jump input, .sel select, .cp__in, .cp__tagWrap, .set__in, .set__area, .dm__ta, .rp__ta, .rp__sel) {
+  border: 1.5px solid color-mix(in srgb, var(--hud-glow) 60%, transparent);
+  border-radius: 26px;
+  background-color: var(--hud-void);
+  color: var(--hud-ice);
+  color-scheme: dark;
+  /* 一片星海：一团星云 + 七颗星点。位置写死 ⇒ 每次渲染完全一致 */
+  background-image:
+    radial-gradient(60% 160% at 18% 50%, color-mix(in srgb, var(--c800) 60%, transparent), transparent 70%),
+    radial-gradient(circle 1.4px at 12% 34%, var(--hud-ice) 45%, transparent 60%),
+    radial-gradient(circle 1px at 27% 68%, var(--hud-ice) 45%, transparent 60%),
+    radial-gradient(circle 1.2px at 41% 28%, var(--hud-ice) 45%, transparent 60%),
+    radial-gradient(circle 0.9px at 55% 72%, var(--hud-ice) 45%, transparent 60%),
+    radial-gradient(circle 1.3px at 68% 38%, var(--hud-ice) 45%, transparent 60%),
+    radial-gradient(circle 1px at 79% 64%, var(--hud-ice) 45%, transparent 60%),
+    radial-gradient(circle 1.1px at 90% 32%, var(--hud-ice) 45%, transparent 60%);
+  background-repeat: no-repeat;
+  box-shadow: inset 0 0 22px color-mix(in srgb, var(--hud-void) 80%, transparent);
+  transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+/* 顶栏搜索框是**容器**：里面那个 input 保持透明无框，星海画在容器上 */
+html .search input { background: none; border: 0; color: var(--hud-ice); }
+
+html :is(.search, .auth__in, .tpForm__box, .tpRate__in, .pg__jump input, .search input, .cp__in, .set__in, .set__area, .dm__ta, .rp__ta, .rp__sel)::placeholder {
+  color: color-mix(in srgb, var(--hud-ice) 52%, transparent);
+  opacity: 1;
+}
+/* —— 输入底座的**日间面**（只认亮色主题）——
+   用户后来说清：「这版就挺不错的」指的是**日夜两面都不错**，所以两面都要落。
+   日间＝**晴空 + 一轮硬边太阳**：淡蓝高空（上深下浅）+ 右侧一枚硬边日轮 + 日晕 + 一道飞机云。
+   ⚠️ 「硬边」是这条的关键：软边渐变谁看都是「一块色」，**硬边圆盘才读得出「这是太阳」**。
+      第一版就是软边云团 + 淡月，用户判「看不懂」。
+   ⚠️ 位置必须**插在基础规则之后、:hover/:focus/:error 之前**：
+      日间面与那些状态规则**特异度打平**（都是 (0,2,1)），靠顺序决定谁赢 ——
+      放后面的话会把聚焦态一起盖掉（原型页上就出过这个 bug，探针当场抓到）。
+   ⚠️ `color-scheme: light` 必须跟着翻：基础规则里写的是 dark，不翻回来
+      原生 select 箭头会是浅色，压在浅底上等于没有。 */
+html[data-theme="light"] :is(.search, .auth__in, .tpForm__box, .tpRate__in, .tpRate__sel, .pg__jump input, .sel select, .cp__in, .cp__tagWrap, .set__in, .set__area, .dm__ta, .rp__ta, .rp__sel) {
+  border-color: color-mix(in srgb, var(--c600) 60%, transparent);
+  background-color: color-mix(in srgb, var(--c200) 88%, var(--surface));
+  color: var(--ink-deep);
+  color-scheme: light;
+  background-image:
+    /* 日轮：硬边圆盘（末尾那一档 95%→100% 就是硬边） */
+    radial-gradient(circle 8px at 88% 50%, var(--y300) 0 95%, transparent 100%),
+    /* 日晕：日轮的两倍半 */
+    radial-gradient(circle 21px at 88% 50%, color-mix(in srgb, var(--y300) 62%, transparent), transparent 100%),
+    /* 一道飞机云 */
+    linear-gradient(99deg, transparent 26%, color-mix(in srgb, var(--surface) 88%, transparent) 42%, transparent 58%),
+    /* 天：上深下浅 */
+    linear-gradient(180deg, color-mix(in srgb, var(--c400) 90%, transparent),
+                    color-mix(in srgb, var(--c100) 55%, transparent) 80%);
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--c200) 65%, transparent);
+}
+html[data-theme="light"] :is(.search, .auth__in, .tpForm__box, .tpRate__in, .pg__jump input, .search input, .cp__in, .set__in, .set__area, .dm__ta, .rp__ta, .rp__sel)::placeholder {
+  color: var(--ink-faint);
+}
+html[data-theme="light"] .search input { color: var(--ink-deep); }
+
+html :is(.search, .auth__in, .tpForm__box, .tpRate__in, .tpRate__sel, .pg__jump input, .sel select, .cp__in, .cp__tagWrap, .set__in, .set__area, .dm__ta, .rp__ta, .rp__sel):hover {
+  border-color: var(--c600);
+}
+html :is(.search, .auth__in, .tpForm__box, .tpRate__in, .tpRate__sel, .pg__jump input, .sel select, .cp__in, .cp__tagWrap, .set__in, .set__area, .dm__ta, .rp__ta, .rp__sel):focus,
+html :is(.search, .auth__in, .tpForm__box, .tpRate__in, .tpRate__sel, .pg__jump input, .sel select, .cp__in, .cp__tagWrap, .set__in, .set__area, .dm__ta, .rp__ta, .rp__sel):focus-visible,
+html :is(.search, .auth__in, .tpForm__box, .tpRate__in, .tpRate__sel, .pg__jump input, .sel select, .cp__in, .cp__tagWrap, .set__in, .set__area, .dm__ta, .rp__ta, .rp__sel):focus-within {
+  outline: 0;
+  border-color: var(--c700);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c700) 20%, transparent),
+              0 0 20px color-mix(in srgb, var(--hud-glow) 60%, transparent);
+}
+
+/* 验证失败状态：抖动 + 红边 + 淡红底（P0.2 设计改进） */
+html :is(.auth__in, .set__in, .cp__in, .tpForm__box)[aria-invalid="true"] {
+  border-color: var(--hot) !important;
+  background: linear-gradient(135deg, var(--hud-deep) 0%, rgba(224, 86, 63, .06) 100%) !important;
+  box-shadow: inset 0 1px 3px rgba(224, 86, 63, .15) !important;
+  animation: input-shake .42s var(--ease);
+}
+html :is(.auth__in, .set__in, .cp__in, .tpForm__box)[aria-invalid="true"]:focus-visible {
+  box-shadow: inset 0 1px 3px rgba(224, 86, 63, .15), 0 0 0 3px rgba(224, 86, 63, .18) !important;
+}
+html[data-theme="light"] :is(.auth__in, .set__in, .cp__in, .tpForm__box)[aria-invalid="true"] {
+  background: linear-gradient(135deg, var(--surface) 0%, rgba(224, 86, 63, .04) 100%) !important;
+}
+
+@keyframes input-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html :is(.auth__in, .set__in, .cp__in, .tpForm__box)[aria-invalid="true"] { animation: none; }
+}
+html :is(.search, .auth__in, .tpForm__box, .tpRate__in, .tpRate__sel, .pg__jump input, .sel select, .cp__in, .cp__tagWrap, .set__in, .set__area, .dm__ta, .rp__ta, .rp__sel)[aria-invalid="true"] {
+  border-color: var(--hot);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hot) 20%, transparent),
+              inset 0 0 22px color-mix(in srgb, var(--hot) 22%, transparent);
+}
+html :is(.search, .auth__in, .tpForm__box, .tpRate__in, .tpRate__sel, .pg__jump input, .sel select, .cp__in, .cp__tagWrap, .set__in, .set__area, .dm__ta, .rp__ta, .rp__sel):disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+/* 音量条是全站唯一「真能用」的滑杆，原来只吃全局蓝环 —— 补一个金环 */
+.pl__rng:focus-visible { outline: 2px solid var(--hud-gold-s); outline-offset: 3px; }
+
+/* ══════════════ 面包屑别名 .sp-crumb ══════════════
+   站点地图 / 观测者名录 / 管理端这三个页面不加载 forum.css，用的是 .sp-crumb；
+   这个类在 forum.css 里没有对应规则，之前三页的面包屑一直是裸链接（12px 都没有）。
+   放在 style.css 是为了三页一次修完，而不是各页各写一遍。 */
+.sp-crumb {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin: 14px 2px 12px;
+  font-size: 12px; color: var(--ink-faint);
+}
+.sp-crumb a { color: var(--ink-soft); }
+.sp-crumb a:hover { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+.sp-crumb > span { color: var(--ink); font-weight: 500; }
+
+/* ============ 开屏 · 星盘校准 ============
+   中文 webfont 被切成上千个 unicode-range 子集，会随页面用字**逐批到货、逐批换字**
+   （实测 6.8s / 9.5s 各换一次）。首帧先盖一块全屏遮罩，等 document.fonts.ready 再淡出 ——
+   用户永远看不到换字。结构在各页 <body> 开头，逻辑在 boot.js。 */
+.boot { display: none; }
+.js .boot {
+  /* 兜底：万一 boot.js 没跑起来，14s 后自己消失，不能把站锁死（#legend 那次教训） */
+  animation: bootFailsafe .01s linear 14s forwards;
+  position: fixed; inset: 0; z-index: 500;
+  display: grid; place-items: center;
+  background:
+    radial-gradient(1.4px 1.4px at 18% 22%, rgba(255, 255, 255, .85), transparent 60%),
+    radial-gradient(1.2px 1.2px at 72% 14%, rgba(255, 255, 255, .6), transparent 60%),
+    radial-gradient(1.6px 1.6px at 84% 68%, rgba(255, 236, 190, .75), transparent 60%),
+    radial-gradient(1.1px 1.1px at 34% 78%, rgba(255, 255, 255, .55), transparent 60%),
+    radial-gradient(1.3px 1.3px at 58% 44%, rgba(255, 255, 255, .45), transparent 60%),
+    radial-gradient(130% 100% at 50% 38%, #0b1330 0%, #050813 68%);
+  color: #eef1fd;
+  transition: opacity .7s var(--ease), visibility 0s .7s;
+}
+.boot.is-done { opacity: 0; visibility: hidden; pointer-events: none; }
+/* 同一标签页第二次进站：首帧前就把遮罩摘掉，连淡出都不放 */
+html.boot-skip .boot { display: none !important; }
+html.boot-lock { overflow: hidden; }
+@keyframes bootFailsafe { to { opacity: 0; visibility: hidden; pointer-events: none; } }
+
+.boot__box { display: grid; justify-items: center; gap: 16px; }
+.boot__dial { width: 152px; height: 152px; color: #ecc97c; overflow: visible; }
+/* 外圈是一段「彗尾弧」在跑，不是整圆转 —— 整圆旋转在视觉上和静止没区别 */
+.boot__ring {
+  fill: none; stroke: currentColor; stroke-opacity: .55; stroke-width: 2;
+  stroke-dasharray: 46 444; stroke-linecap: round;
+  transform-box: view-box; transform-origin: 100px 100px;
+  animation: bootSpin 2.2s linear infinite;
+}
+.boot__ring--i { stroke-opacity: .3; stroke-width: 1; stroke-dasharray: 2 6; animation-duration: 7s; animation-direction: reverse; }
+@keyframes bootSpin { to { rotate: 360deg; } }
+.boot__ec { fill: none; stroke: currentColor; stroke-opacity: .28; stroke-width: 1; stroke-dasharray: 1 5; }
+.boot__pl { fill: #ffe7a3; filter: drop-shadow(0 0 6px #ecc97c);
+  animation: bootPulse 1.8s ease-in-out infinite, bootOrbit 4.2s linear infinite; }
+@keyframes bootPulse { 50% { opacity: .4; } }
+/* 沿黄道椭圆走一圈（12 帧近似，SMIL 在这里不生效，用 CSS 更稳） */
+/* 沿黄道椭圆走一圈 —— ⚠️ 关键帧必须与椭圆的 rotate(-23 100 100) 对齐，
+   否则光点会整整偏出一条轨道的宽度（2026-11-07 实测用户反馈「光点没在轨道上」）。 */
+@keyframes bootOrbit {
+  0.00% { transform: translate(179.2px, 66.4px); }
+  4.17% { transform: translate(179.7px, 75.2px); }
+  8.33% { transform: translate(174.8px, 85.6px); }
+  12.50% { transform: translate(164.8px, 97.1px); }
+  16.67% { transform: translate(150.4px, 108.7px); }
+  20.83% { transform: translate(132.6px, 119.8px); }
+  25.00% { transform: translate(112.5px, 129.5px); }
+  29.17% { transform: translate(91.6px, 137.1px); }
+  33.33% { transform: translate(71.2px, 142.3px); }
+  37.50% { transform: translate(52.9px, 144.6px); }
+  41.67% { transform: translate(37.7px, 143.8px); }
+  45.83% { transform: translate(26.8px, 140.1px); }
+  50.00% { transform: translate(20.8px, 133.6px); }
+  54.17% { transform: translate(20.3px, 124.8px); }
+  58.33% { transform: translate(25.2px, 114.4px); }
+  62.50% { transform: translate(35.2px, 102.9px); }
+  66.67% { transform: translate(49.6px, 91.3px); }
+  70.83% { transform: translate(67.4px, 80.2px); }
+  75.00% { transform: translate(87.5px, 70.5px); }
+  79.17% { transform: translate(108.4px, 62.9px); }
+  83.33% { transform: translate(128.8px, 57.7px); }
+  87.50% { transform: translate(147.1px, 55.4px); }
+  91.67% { transform: translate(162.3px, 56.2px); }
+  95.83% { transform: translate(173.2px, 59.9px); }
+  100.00% { transform: translate(179.2px, 66.4px); }
+}
+.boot__t { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 20px; letter-spacing: .32em; color: #eef1fd; text-align: center; }
+.boot__t span { display: block; margin-top: 10px; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 12px; letter-spacing: .22em; color: #97a2c8; }
+.boot__bar { position: relative; width: 200px; height: 2px; border-radius: 2px; overflow: hidden; background: rgba(236, 201, 124, .16); }
+.boot__bar::after { content: ""; position: absolute; inset: 0; width: 38%;
+  background: linear-gradient(90deg, transparent, #ecc97c, transparent);
+  animation: bootSweep 1.5s ease-in-out infinite; }
+@keyframes bootSweep { from { transform: translateX(-110%); } to { transform: translateX(360%); } }
+.boot__s { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 12px; letter-spacing: .18em; color: #6d789c; }
+
+@media (prefers-reduced-motion: reduce) {
+  .boot__ring, .boot__pl, .boot__bar::after { animation: none !important; }
+  .boot__bar::after { width: 100%; background: rgba(236, 201, 124, .5); }
+}

@@ -1,0 +1,274 @@
+/* 星海社 · 私信（浮动窗）
+   ==================================================================
+   用户 2026-11-01：「私信我觉得是可以集成在文本框版块上，一点开就是一个 UI，
+     左侧是私信对象，然后右侧是完整的聊天」，并选定**只做悬浮窗**。
+
+   于是这一页不是第二套聊天产品，而是**站里那扇观测窗**里的两栏：
+     · 左栏 = **星表**（会话）：首字色相头像 · 星等 · 最后一句 · 未读。行的分隔用发丝线，
+       不是「一排浮起来的小药片」—— 与消息页同一套收件箱语言。
+     · 右栏 = **观测记录**：一来一往的条目 + 每组末尾的已读/未读；发出的那条用站里主按钮同一份深蓝渐变
+       （--deep-grad），收到的用站里的「小板」玻璃（--hud-plate）。
+     · 底部 = **站里的输入底座**（§23）。`.dm__ta` 已加入底座名单，
+       这里只写高度 / 内边距 / 字号，**不另写边框与底色**（同一层不许另起材料）。
+
+   ⚠️ 工具页铁律：天文只住材料与站点标记里 —— 窗格坐标网格（.win 自带）、
+      标题栏格子条（HKWin 自带）、双星图标、头像色相、星等、未读金数。
+      这一页**没有**星座连线 / 星盘 / 轨道图之类的结构层图形。
+   ⚠️ 颜色一律走 --hud-*（两主题都翻）与 --deep-grad；不新造颜色。 */
+
+/* ══════════════ HUD 键上的未读数 ══════════════
+   用户 2026-11-01：「未读提醒在文本框功能栏里也要做」。
+   数字放在「私信」两个字的右上角（上标），**不占键外空间**、不压邻居（40px 方格 + 4px 簇距）。
+   有未读时整枚键的边也转金；读屏的条数走 dm.js 写的 aria-label。 */
+.key[data-k="私信"] { position: relative; }
+.key[data-k="私信"][data-dm-unread] { border-color: var(--hud-gold-s); }
+.key__n {
+  margin-left: 1px; vertical-align: super;
+  font-family: var(--font-mono); font-size: 12px; font-style: normal; font-weight: 700;
+  line-height: 0; color: var(--hud-gold-s);
+}
+.key__n[hidden] { display: none; }
+
+/* ══════════════ 窗 ══════════════
+   尺寸只在这一处定。标题栏高度会随断点变（58 → 42），所以窗体用 flex 吃掉剩下的高度，
+   **不要**写 `height: calc(100% - 58px)` —— 窄屏会多出 16px 的空白或把底栏挤出去。 */
+.win--dm {
+  width: min(1180px, calc(100vw - 40px));
+  height: min(780px, calc(100vh - 72px));
+  display: flex; flex-direction: column;
+}
+.win--dm .win__bar { flex: none; }
+.win--dm .win__body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+
+/* ══════════════ 两栏 ══════════════ */
+.dm {
+  display: grid; grid-template-columns: 304px minmax(0, 1fr);
+  height: 100%; min-height: 0;
+  color: var(--hud-ink);
+  font-size: 13px;
+}
+
+/* ── 左：星表（会话） ── */
+.dm__side {
+  display: flex; flex-direction: column; min-height: 0;
+  border-right: 2px solid var(--hud-edge);
+  background: color-mix(in srgb, var(--hud-plate) 88%, transparent);
+}
+.dm__side-hd { flex: none; padding: 11px 12px 10px; border-bottom: 1px solid var(--hud-ice-w); }
+/* `.search` 在 ≤640 会被**顶栏那条** media 规则整个隐藏（style.css:2496）。
+   这里是窗内的筛选条，必须显式留下 —— 与标签页 `.tg-find .search` 同一条教训。
+   `.dm .search` 特异度压过裸 `.search`，所以不用 !important。 */
+.dm .search { display: flex; width: 100%; height: 36px; }
+.dm .search input { font-size: 13px; }
+.dm__list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 6px 8px; overscroll-behavior: contain; }
+.dm__grp {
+  margin: 12px 8px 4px; font-size: 11.5px; letter-spacing: .1em;
+  color: var(--hud-ink-soft);
+}
+.dm__grp:first-child { margin-top: 4px; }
+.dm__null { margin: 14px 8px; font-size: 12.5px; line-height: 1.7; color: var(--hud-ink-soft); }
+
+/* 一行 = 头像 · 名字与最后一句 · 读没读。整行是按钮，键盘可达。 */
+.dm__row {
+  display: grid; grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 10px; align-items: center; width: 100%;
+  padding: 9px 8px; border: 0; border-radius: 8px;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: background-color .16s var(--ease);
+}
+.dm__row:hover { background: color-mix(in srgb, var(--hud-gold-tint) 62%, transparent); }
+/* 当前会话：**左边一道 3px 金线**，不是整块高亮 —— 与站里「当前页」的金线同一套读法。 */
+.dm__row[aria-current="true"] {
+  background: var(--hud-gold-tint);
+  box-shadow: inset 3px 0 0 var(--hud-gold-s);
+}
+.dm__row:focus-visible { outline: 2px solid var(--hud-gold-s); outline-offset: -2px; }
+.dm__row-t { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dm__row-t b { font-size: 13px; font-weight: 600; color: var(--hud-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm__pv { font-size: 12px; color: var(--hud-ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm__row-r { display: flex; align-items: center; white-space: nowrap; }
+/* 右下角只说「读没读」：未读 = 金，已读 = 淡墨。不再显示「几分钟前」。 */
+.dm__st { font-family: var(--font-mono); font-size: 11.5px; color: var(--hud-ink-soft); }
+.dm__st.is-u { color: var(--hud-gold-s); font-weight: 700; }
+
+/* 待确认：同一行 + 两枚小动作。动作不压在行按钮里（按钮不能套按钮）。 */
+.dm__req { display: flex; gap: 6px; padding: 0 8px 8px 56px; }
+.dm__req button {
+  height: 26px; padding: 0 10px; border-radius: var(--r-pill);
+  border: 1.5px solid var(--hud-ice-w); background: none; color: var(--hud-ink);
+  font: inherit; font-size: 12px; cursor: pointer;
+}
+.dm__req button:hover { border-color: var(--hud-gold-s); color: var(--hud-gold-s); }
+.dm__req button:focus-visible { outline: 2px solid var(--hud-gold-s); outline-offset: 2px; }
+.dm__req .dm__req-y { border-color: var(--hud-gold-s); color: var(--hud-gold-s); }
+
+.dm__note {
+  flex: none; margin: 0; padding: 8px 12px 10px;
+  border-top: 1px solid var(--hud-ice-w);
+  font-size: 11.5px; color: var(--hud-ink-soft);
+}
+.dm__note a { color: var(--hud-gold-s); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── 右：观测记录 ── */
+.dm__main {
+  display: flex; flex-direction: column; min-height: 0;
+  background: color-mix(in srgb, var(--hud-plate-hi) 92%, transparent);
+}
+.dm__hd {
+  flex: none; display: flex; align-items: center; gap: 10px;
+  min-height: 60px; padding: 9px 18px;
+  border-bottom: 2px solid var(--hud-edge);
+}
+.dm__back {
+  display: none; place-items: center; flex: none;
+  width: 30px; height: 30px; padding: 0; border-radius: 6px;
+  border: 1px solid var(--hud-ice-w); background: none; color: var(--hud-ink);
+  cursor: pointer;
+}
+.dm__back .i { width: 15px; height: 15px; transform: rotate(90deg); }
+.dm__back:hover { border-color: var(--hud-gold-s); color: var(--hud-gold-s); }
+.dm__back:focus-visible { outline: 2px solid var(--hud-gold-s); outline-offset: 2px; }
+.dm__id { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dm__id b { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: .04em; color: var(--hud-ink); }
+.dm__id span { font-size: 12px; color: var(--hud-ink-soft); }
+/* 星等：站里 `.mag` 的同一把尺，但住在 HUD 材料上，所以走 --hud-gold-s（会翻主题） */
+.dm__mag { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; flex: none;
+  font-family: var(--font-mono); font-size: 12px; color: var(--hud-ink-soft); }
+.dm__mag .i { width: 13px; height: 13px; color: var(--hud-gold-s); fill: currentColor; stroke: none; }
+.dm__mag b { font-size: 13px; color: var(--hud-gold-s); }
+
+/* 首字色块头像：站里 `.av` / `.msg-av` 的同一套 HSL 令牌 */
+.dm__av {
+  flex: none; display: grid; place-items: center; width: 38px; height: 38px;
+  border-radius: 12px; font-family: var(--font-display); font-size: 17px; font-weight: 700; line-height: 1;
+  background: hsl(var(--ah, 220) 62% var(--av-bg-l));
+  color: hsl(var(--ah, 220) 55% var(--av-fg-l));
+  box-shadow: 0 0 0 1.5px hsl(var(--ah, 220) 66% 62% / .38);
+}
+.dm__hd .dm__av { width: 36px; height: 36px; border-radius: 11px; font-size: 16px; }
+
+/* 消息流：唯一的滚动区。
+   顶部 12px 做一道**淡出**：聊天窗打开时总是滚到底部，最上面那条会被裁掉半截 ——
+   一道短淡出把「裁切」读成「还有更早的」，而不是「这里画坏了」。 */
+.dm__msgs { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: 0; padding: 12px 18px 10px;
+  list-style: none; overscroll-behavior: contain;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12px, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 12px, #000 100%); }
+
+/* ══════════════ 消息版式：双轨星轨（2026-11-01 用户定案） ══════════════
+   收 / 发各一条**虚线**轨道，组首一枚星节点；一段短虚线从节点引到正文，引导阅读。
+   没有气泡填充；文字靠 --hud-outline 的底光压在窗格上。 */
+.dm__ln {
+  position: relative; display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0 10px 42px;
+}
+.dm__ln--me { padding: 10px 42px 10px 0; justify-content: flex-end; }
+.dm__ln--them { justify-content: flex-start; }
+.dm__tx { min-width: 0; max-width: min(78%, 620px); }
+.dm__tx p {
+  margin: 0 0 5px; font-size: 13.5px; line-height: 1.75;
+  color: var(--hud-ink); white-space: pre-wrap; overflow-wrap: anywhere;
+  text-shadow: 0 0 1px var(--hud-outline), 0 0 5px var(--hud-outline);
+}
+.dm__tx p:last-of-type { margin-bottom: 0; }
+/* 已读 / 未读：只挂在**发出消息**的每组最后一条下面。时间戳已撤掉。 */
+.dm__rs { display: block; margin-top: 4px; font-family: var(--font-mono); font-size: 11px;
+  color: var(--hud-ink-soft); text-align: right; }
+.dm__rs.is-u { color: var(--hud-gold-s); font-weight: 700; }
+
+/* ── 虚线轨道：每一组都画左右两条，组与组相接 ⇒ 两条连续虚线 ──
+   用户：「做些虚线引导阅读，现在这个星轨确实抢眼」⇒ 实线改虚线、压淡、缩节点、去辉光。 */
+.dm__rail {
+  position: absolute; top: 0; bottom: 0; left: 15px; width: 0;
+  border-left: 1px dashed color-mix(in srgb, var(--hud-ice-w) 58%, transparent);
+  pointer-events: none;
+}
+.dm__rail--r {
+  left: auto; right: 15px; border-left: 0;
+  border-right: 1px dashed color-mix(in srgb, var(--hud-ice-w) 58%, transparent);
+}
+/* 星节点：比上一版小一档、去辉光，不再抢正文。 */
+.dm__node {
+  position: absolute; left: 8px; top: 14px; width: 14px; height: 14px;
+  color: hsl(var(--ah, 218) 55% 50%); opacity: .9; pointer-events: none;
+}
+[data-theme="dark"] .dm__node { color: hsl(var(--ah, 218) 60% 68%); }
+.dm__node svg { display: block; width: 100%; height: 100%; }
+.dm__ln--me .dm__node { left: auto; right: 8px; }
+/* 阅读引导：从节点**朝文字方向**（收向右、发向左）拉一小段虚线；
+   末端留 5px 不贴字 —— 用户 2026-11-01 更正是「往文字方向引」，不是朝窗边引。 */
+.dm__lead {
+  position: absolute; left: 23px; top: 20px; width: 15px;
+  border-top: 1px dashed color-mix(in srgb, var(--hud-ice-w) 58%, transparent);
+  pointer-events: none;
+}
+.dm__ln--me .dm__lead { left: auto; right: 23px; }
+
+/* 未读分界：打开会话时把「上次读到哪」标出来；只显示一次，读过再开就不出现。 */
+.dm__ub { display: flex; align-items: center; gap: 10px; padding: 8px 0 8px 42px; }
+.dm__ub-t {
+  flex: none; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .06em;
+  color: var(--hud-gold-s); white-space: nowrap;
+}
+.dm__ub::after {
+  content: ''; flex: 1; border-top: 1px dashed color-mix(in srgb, var(--hud-gold-s) 52%, transparent);
+}
+
+/* 空态 / 请求闸 / 关闭横幅 */
+.dm__empty, .dm__gate { flex: 1 1 auto; min-height: 0; display: grid; place-content: center; justify-items: center;
+  gap: 10px; padding: 24px; text-align: center; color: var(--hud-ink-soft); }
+.dm__empty .i, .dm__gate .i { width: 34px; height: 34px; color: var(--hud-gold-s); opacity: .8; }
+.dm__empty p, .dm__gate p { margin: 0; font-size: 13px; line-height: 1.8; max-width: 42ch; }
+.dm__gate h3 { margin: 0; font-family: var(--font-display); font-size: 17px; color: var(--hud-ink); }
+.dm__gate__acts { display: flex; gap: 8px; }
+.dm__gate__acts button {
+  height: 32px; padding: 0 14px; border-radius: var(--r-pill); cursor: pointer;
+  border: 1.5px solid var(--hud-ice-w); background: none; color: var(--hud-ink); font: inherit; font-size: 13px;
+}
+.dm__gate__acts button:hover { border-color: var(--hud-gold-s); color: var(--hud-gold-s); }
+.dm__gate__acts button:focus-visible { outline: 2px solid var(--hud-gold-s); outline-offset: 2px; }
+.dm__gate__acts .dm__req-y { border-color: var(--hud-gold-s); color: var(--hud-gold-s); }
+
+.dm__banner {
+  flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 10px 18px 0; padding: 8px 12px;
+  border: 1.5px solid var(--hud-gold-w); border-radius: 8px;
+  background: var(--hud-gold-tint);
+  font-size: 12.5px; color: var(--hud-ink);
+}
+.dm__banner a { color: var(--hud-gold-s); text-decoration: underline; text-underline-offset: 2px; }
+
+/* 底部：输入底座 + 发送。输入框本身不写边框/底色（§23 底座供给），这里只管版式。 */
+.dm__ft { flex: none; padding: 10px 18px 11px; border-top: 1px solid var(--hud-ice-w);
+  background: color-mix(in srgb, var(--hud-plate) 72%, transparent); }
+.dm__form { display: flex; align-items: flex-end; gap: 10px; }
+.dm__ta {
+  flex: 1 1 auto; min-height: 44px; max-height: 132px; resize: none;
+  padding: 10px 16px; font: inherit; font-size: 13.5px; line-height: 1.6;
+}
+.dm__ta:focus-visible { outline: 0; }
+.dm__send { flex: none; height: 40px; }
+.dm__send:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.dm__hint { margin: 7px 2px 0; font-size: 12px; color: var(--hud-ink-soft); }
+.dm__hint a { color: var(--hud-gold-s); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ══════════════ 窄屏：两栏叠成两页 ══════════════
+   窗口本身已经几乎满屏；这里只把「列表 / 会话」做成前后两页，返回键回到列表。
+   断点 760 与探针同一条口径。 */
+@media (max-width: 760px) {
+  .win--dm { width: calc(100vw - 16px); height: calc(100vh - 20px); }
+  .dm { grid-template-columns: minmax(0, 1fr); }
+  .dm[data-view="side"] .dm__main { display: none; }
+  .dm[data-view="thread"] .dm__side { display: none; }
+  .dm__back { display: grid; }
+  .dm__side { border-right: 0; }
+  .dm__b { max-width: 84%; }
+  .dm__hd { min-height: 52px; padding: 8px 12px; }
+  .dm__msgs { padding: 10px 12px 8px; }
+  .dm__ft { padding: 8px 12px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dm__row, .dm__b, .dm__ta { transition: none; }
+  .dm__send { transform: none !important; }
+}

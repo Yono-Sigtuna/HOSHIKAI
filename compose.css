@@ -1,0 +1,335 @@
+/* 星海社 · 发新帖
+   ══════════════════════════════════════════════════════════════════
+   输入行照 galbase：标题 / 板块 / 标签 **三个 input 排成一行**，标签是自由输入的。
+   工具条装**正文排版**（剧透/引用/小标题/分割/跳转），每枚开一个浮窗（站里的 `.win`）。
+   页宽占满 .wrap，页头用站里的格子条，背景与星空照常。 */
+
+/* ══════════════════ 版面 ══════════════════ */
+.cp-crumb { font-size: 13px; color: var(--ink-faint); padding: 18px 0 0; }
+.cp-crumb a { color: var(--link); text-decoration: none; }
+.cp-crumb a:hover { text-decoration: underline; }
+
+/* 不设 max-width：与其他页同一个 `.wrap` 口径。
+   面板半透明 + 模糊，让背景从两侧透出来。 */
+.cp {
+  margin: 16px 0 48px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(1.08);
+  backdrop-filter: blur(10px) saturate(1.08);
+}
+
+.cp__hd { margin: 2px 0 14px; }
+/* ⚠️ 星轨弧线的复位。`style.css` 里 `.js .orbit__line { stroke-dashoffset: 1200 }` ——
+   弧线在 JS 下**初始是隐藏的**，要祖先带 `.bv.is-drawn` 才会画出来（那是板块页的生长动画）。
+   发帖页没有 `.bv` 那层，不写这条星轨就永远看不见（用户 2026-10-18：「格子条上面的星轨不见了」）。
+   这里直接复位，不做生长动画 —— 本页不该为一条装饰弧线多背一个状态类。 */
+.cp__fs .orbit__line { stroke-dashoffset: 0; }
+
+/* 页头：格子条 · 板块引文 · 发布
+   ⚠️ 引文不是装饰：它来自 `FORUM.boards[].quote`，随板块切换而换 ——
+      用户 2026-10-20：「格子条右边到发帖那么空，你想放什么」。
+      这块空档承担的是「你要去的板块的声音」，不是又一组表单读数。 */
+.cp__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "fs quote go";
+  align-items: center;
+  gap: 12px 28px;
+  margin: 2px 0 14px;
+}
+.cp__head .cp__hd { grid-area: fs; margin: 0; }
+.cp__head .btn { grid-area: go; white-space: nowrap; }
+
+.cp__quote {
+  grid-area: quote; justify-self: end; text-align: right;
+  max-width: min(100%, 560px);
+  margin: 0; padding: 2px 0 2px 20px;
+  border-left: 1px solid var(--line-soft);
+}
+.cp__quote__t {
+  margin: 0; font-family: var(--font-display);
+  font-size: 17px; line-height: 1.75; color: var(--ink-soft);
+}
+.cp__quote__c {
+  display: block; margin-top: 6px; font-style: normal;
+  font-size: 12px; letter-spacing: .08em;
+  color: hsl(var(--th, 218) var(--hue-fg-s) var(--hue-fg-l));
+}
+
+/* 页头第二行：发到 / 作者 */
+.cp__top {
+  display: flex; align-items: center; gap: 16px; flex-wrap: nowrap;
+  margin: 0 0 16px;
+}
+.cp__lede { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 13px; color: var(--ink-soft); }
+.cp__lede b { color: var(--ink-deep); }
+
+/* ══════════════════ 输入行：三个 input 排一行 ══════════════════ */
+/* 标题 flex、板块定宽 220、标签 flex —— 三个都是真 input，标签不是「选」是「写」。 */
+.cp__line { display: grid; grid-template-columns: minmax(0, 1fr) 220px minmax(0, 1fr); gap: 10px; align-items: start; }
+
+/* ⚠️ 颜色/边框/圆角/星海**一律不在本文件里写**：它们由 `style.css` 的输入底座供给
+   （`html :is(.search, .auth__in, …, .cp__in, .cp__tagWrap)`，特异度 (0,1,1)，
+   压得过这里的单类选择器）。本文件只负责**版式**：高度、字号、内边距。
+   在这里再写一遍 border/background 只会留下两份互相打架的声明（memories 2.67）。 */
+.cp__in {
+  display: block; width: 100%; height: 44px;
+  padding: 0 16px; border: 0; background: none;
+  font: inherit; font-size: 14px;
+}
+.cp__in:focus-visible { outline: 0; }
+
+/* ⚠️ 三个控件其实是**同一片天**：把背景钉在面板上（而不是各自的框里）。
+   否则三格会各画一套一模一样的星点/太阳 —— 一排三个太阳，一眼就是复制粘贴。
+   钉住之后三格各看到这片天的一个不同切片：太阳只出现一次，星点也不三连。
+   `.cp` 自己有 `backdrop-filter`，会成为 fixed 背景的定位祖先 ⇒ 天随面板走，不随滚动飘。 */
+.cp__line :is(.cp__in, .cp__tagWrap, .sel select) { background-attachment: fixed; }
+
+/* 亮色主题下**本页只留一个太阳**，放在下方书写面（更大的那片天）里。
+   输入行保留同一片天空（天渐变 + 飞机云），但不带日轮 ——
+   否则一页上会有两个黄点：右上角输入框一个、书写面一个，物理上也不成立。
+   只覆盖 `background-image`，边框/焦点/内凹阴影仍走底座。 */
+html[data-theme="light"] .cp__line :is(.cp__in, .cp__tagWrap, .sel select) {
+  background-image:
+    linear-gradient(99deg, transparent 26%, color-mix(in srgb, var(--surface) 88%, transparent) 42%, transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--c400) 90%, transparent),
+                    color-mix(in srgb, var(--c100) 55%, transparent) 80%);
+}
+
+/* 板块下拉：站里的 .sel，占满那一格 */
+.cp__line .sel { width: 100%; }
+.cp__line .sel select { width: 100%; height: 44px; font-size: 14px; }
+
+/* 标签：已选胶囊 + 输入框，像一个邮件收件人栏 —— 胶囊在左，输入框吃剩下。
+   外壳 `.cp__tagWrap` 吃的是与标题框同一份星海底座，所以整行三件同一种材料。 */
+.cp__tagWrap {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  min-height: 44px; padding: 4px 12px 4px 14px;
+}
+/* 标签输入条：**无框、透明**，画在外壳的星海上；颜色继承外壳（亮=墨蓝，暗=冰白） */
+.cp__in--tag {
+  flex: 1 1 120px; min-width: 90px; height: 34px; padding: 0;
+  border: 0; background: none; color: inherit; font: inherit; font-size: 14px;
+}
+.cp__in--tag::placeholder { color: currentColor; opacity: .55; }
+.cp__in--tag:focus-visible { outline: 0; }
+/* 标签输入条自己没有框，报错态要画在**外壳**上（与站内底座的 invalid 同一套：红边 + 内红晕） */
+.cp__tagWrap:has(.cp__in--tag[aria-invalid="true"]) {
+  border-color: var(--hot);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hot) 20%, transparent),
+              inset 0 0 22px color-mix(in srgb, var(--hot) 22%, transparent);
+}
+.cp__chips { display: contents; }
+
+/* 已选标签：站里 `.tag` 的色相胶囊（同名同色走 `TAG_HUE`）。
+   亮色主题：白底 + 色相边/字 —— 因为外壳是淡蓝晴空，奶白胶囊才浮得出来；
+   暗色主题：色相自身那档深底（与站内 `.tag` 完全一致）。 */
+.cpChip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 1px 4px 1px 9px; border-radius: var(--r-pill);
+  border: 1px solid hsl(var(--th, 218) var(--hue-bd-s) var(--hue-bd-l));
+  background: var(--surface);
+  color: hsl(var(--th, 218) var(--hue-fg-s) var(--hue-fg-l));
+  font-size: 12px; line-height: 1.7; white-space: nowrap;
+}
+[data-theme="dark"] .cpChip { background: hsl(var(--th, 218) var(--hue-bg-s) var(--hue-bg-l)); }
+.cpChip__x {
+  display: grid; place-items: center; width: 16px; height: 16px; padding: 0;
+  border: 0; border-radius: 50%; background: none; cursor: pointer;
+  color: currentColor; opacity: .55; font: inherit; font-size: 13px; line-height: 1;
+}
+.cpChip__x:hover {
+  opacity: 1; background: hsl(var(--th, 218) var(--hue-bd-s) var(--hue-bd-l));
+  color: var(--surface);
+}
+.cpChip__x:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; opacity: 1; }
+
+.cp__msg { margin: 6px 0 0; font-size: 12px; color: var(--hot); }
+.cp__msg:empty { display: none; }
+
+/* ══════════════════ 正文排版工具条（HUD 那排 `.key` 的形制） ══════════════════ */
+.cp__bar {
+  display: flex; align-items: stretch; gap: 8px; flex-wrap: wrap;
+  margin: 14px 0 0; padding: 10px 12px;
+  border: 1.5px dashed var(--c400); border-radius: var(--r);
+  background: linear-gradient(180deg, var(--c100), var(--surface));
+}
+.cp__key { --k-tile: 44px; flex: none; }
+.cp__key:hover { border-color: var(--c600); background: var(--c100); }
+.cp__key:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; }
+
+/* ══════════════════ 正文：书写面 ══════════════════
+   用户 2026-10-20：「文本框为什么不左右铺满，而且颜色跟网站不搭……天文元素设计呢？」
+   ⇒ 三点一起改：
+     ① **铺满**：与标题行、工具条同一个 `.wrap` 口径，不再做居中的窄纸。
+     ② **材料**：不再用奶黄纸，改吃**与输入框同一套**材料 ——
+        亮色是晴空（淡蓝天 + 右上角一轮硬边日轮 + 一道飞机云），
+        暗色是深空（星云 + 星点）。同一页上的「控件」和「书写面」终于是同一片天。
+     ③ **天文在材料里**（工具页纪律）：日轮/星云/星点只做底，不占结构。 */
+.cp__row { margin-top: 14px; }
+
+.cp__sheet {
+  --cp-rail: 18px;              /* 左侧星轨的宽度（正文让出来的那一截） */
+  width: 100%;
+  padding: 22px 26px 26px;
+  border: 1.5px solid color-mix(in srgb, var(--c600) 60%, transparent);
+  border-radius: var(--r);
+  background-color: color-mix(in srgb, var(--c200) 88%, var(--surface));
+  background-image:
+    /* 日轮：硬边圆盘，压在右上角，被外框圆角切掉一角 */
+    radial-gradient(circle 26px at 97% 5%, var(--y300) 0 94%, transparent 100%),
+    /* 日晕：日轮的三倍半 */
+    radial-gradient(circle 92px at 97% 5%, color-mix(in srgb, var(--y300) 40%, transparent), transparent 100%),
+    /* 一道飞机云 */
+    linear-gradient(99deg, transparent 24%, color-mix(in srgb, var(--surface) 78%, transparent) 42%, transparent 60%),
+    /* 天：上深下浅 */
+    linear-gradient(180deg, color-mix(in srgb, var(--c400) 52%, transparent),
+                    color-mix(in srgb, var(--c100) 64%, transparent) 78%);
+  background-repeat: no-repeat;
+  transition: border-color .18s var(--ease), box-shadow .18s var(--ease);
+}
+[data-theme="dark"] .cp__sheet {
+  border-color: color-mix(in srgb, var(--hud-glow) 55%, transparent);
+  background-color: var(--hud-void);
+  background-image:
+    radial-gradient(80% 130% at 14% 0%, color-mix(in srgb, var(--c800) 52%, transparent), transparent 72%),
+    radial-gradient(circle 1.4px at 9% 16%, var(--hud-ice) 45%, transparent 60%),
+    radial-gradient(circle 1px at 23% 42%, var(--hud-ice) 45%, transparent 60%),
+    radial-gradient(circle 1.2px at 37% 12%, var(--hud-ice) 45%, transparent 60%),
+    radial-gradient(circle 0.9px at 52% 58%, var(--hud-ice) 45%, transparent 60%),
+    radial-gradient(circle 1.3px at 66% 26%, var(--hud-ice) 45%, transparent 60%),
+    radial-gradient(circle 1px at 78% 64%, var(--hud-ice) 45%, transparent 60%),
+    radial-gradient(circle 1.1px at 88% 18%, var(--hud-ice) 45%, transparent 60%);
+}
+.cp__sheet:focus-within {
+  border-color: var(--c700);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c700) 20%, transparent),
+              0 0 20px color-mix(in srgb, var(--hud-glow) 55%, transparent);
+}
+
+.cp__lab {
+  display: block; margin: 0 0 12px;
+  font-size: 13px; font-weight: 700; color: var(--ink-deep);
+}
+[data-theme="dark"] .cp__lab { color: var(--hud-ice); }
+
+.cp__body {
+  display: block; width: 100%; min-height: 430px;
+  padding: 0 0 0 var(--cp-rail); border: 0; outline: 0;
+  background-color: transparent;
+  color: var(--ink-deep);
+  font-family: var(--font-display);
+  font-size: 16px; line-height: 32px; letter-spacing: .01em;
+  resize: none; overflow: hidden;
+  /* 行线：每 32px 一条，压在行底；颜色取天空的蓝，不用纸的黄。
+     ⚠️ 周期必须与 `line-height` 同源（32px）；改一个就得改另一个（探针 X9f/X9g 钉住）。 */
+  background-image: repeating-linear-gradient(to bottom,
+    transparent 0 28px,
+    color-mix(in srgb, var(--c600) 24%, transparent) 28px 29px,
+    transparent 29px 32px);
+}
+[data-theme="dark"] .cp__body {
+  color: var(--hud-ice);
+  background-image: repeating-linear-gradient(to bottom,
+    transparent 0 28px,
+    color-mix(in srgb, var(--hud-ice) 12%, transparent) 28px 29px,
+    transparent 29px 32px);
+}
+.cp__body::placeholder { color: var(--ink-faint); opacity: 1; font-size: 15px; }
+[data-theme="dark"] .cp__body::placeholder { color: color-mix(in srgb, var(--hud-ice) 52%, transparent); }
+.cp__sheet:has(.cp__body[aria-invalid="true"]) { border-color: var(--hot); }
+
+/* ══════════════════ 正文左侧星轨（写作中的反馈） ══════════════════
+   每写完一段（空行分隔），留白里亮一颗 5px 的星；星落在该段首行的 y 上，用 1px 线相连。
+   ⚠️ 不推测换行：星星的 y 来自一个 hidden 的镜像层（同字体/同行高/同宽度），
+      由它里面每个段首的零宽标记量出来。textarea 本身没有子元素，量不了。
+   ⚠️ 星只是**结构读数**（段落数），不是随机装饰；上限 30 颗，避免几十段时连成一条实线。 */
+.cp__bodyWrap { position: relative; }
+.cp__rail {
+  position: absolute; left: 0; top: 0; bottom: 0; width: var(--cp-rail);
+  pointer-events: none;
+}
+.cp__railLine {
+  position: absolute; left: 50%; width: 1px; margin-left: -.5px;
+  background: color-mix(in srgb, var(--c600) 40%, transparent);
+}
+.cp__rail i {
+  position: absolute; left: 50%; width: 5px; height: 5px;
+  margin-left: -2.5px; margin-top: -2.5px; border-radius: 50%;
+  background: var(--y600);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--y600) 55%, transparent);
+  transition: opacity .18s var(--ease);
+}
+[data-theme="dark"] .cp__rail i {
+  background: var(--hud-ice);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--hud-ice) 45%, transparent);
+}
+[data-theme="dark"] .cp__railLine { background: color-mix(in srgb, var(--hud-ice) 22%, transparent); }
+
+/* 镜像层：只用来量段落首行的 y 与光标矩形；不可见、不接事件、不进无障碍树。 */
+.cp__mirror {
+  position: absolute; left: var(--cp-rail); top: 0;
+  visibility: hidden; pointer-events: none;
+  white-space: pre-wrap; overflow-wrap: break-word;
+  font-family: var(--font-display);
+  font-size: 16px; line-height: 32px; letter-spacing: .01em;
+  color: transparent;
+}
+.cp__mp { display: inline; }
+
+/* 插入火花：从浮窗里的「插入到正文」飞到光标附近，一次性节点。 */
+.cpSpark {
+  position: fixed; left: 0; top: 0; width: 6px; height: 6px; margin: -3px 0 0 -3px;
+  border-radius: 50%; background: var(--y400);
+  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--y500) 55%, transparent);
+  pointer-events: none; z-index: 9999;
+}
+[data-theme="dark"] .cpSpark {
+  background: var(--hud-ice);
+  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--hud-ice) 45%, transparent);
+}
+
+.cp__foot {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft);
+}
+.cp__hint { flex: 1 1 320px; font-size: 12px; color: var(--ink-faint); line-height: 1.6; }
+.cp__hint b { color: var(--ink-soft); }
+
+/* ══════════════════ 浮窗内容（站里那扇 `.win` 的窗内） ══════════════════
+   `.win` 默认 1120（给看图用的）；工具窗收窄一档。
+   `.win__body` 不带内边距，所以每个浮窗的内容包一层 `.cpPad`。 */
+.win--tool { width: min(680px, calc(100vw - 40px)); }
+.cpPad { padding: 16px 18px 18px; color: var(--hud-ink); font-size: 13px; line-height: 1.75; }
+.cpPad p { margin: 0 0 10px; color: var(--hud-ink-soft); }
+.cpPad p:last-child { margin-bottom: 0; }
+.cpPre {
+  margin: 0 0 12px; padding: 10px 12px; border-radius: 6px;
+  border: 1px dashed var(--hud-gold-w); background: var(--hud-gold-tint);
+  font-family: var(--font-mono); font-size: 12.5px; color: var(--hud-ink);
+  white-space: pre-wrap; word-break: break-word;
+}
+.cpPad__acts { margin-top: 14px; display: flex; gap: 10px; }
+
+/* ══════════════════ 断点 ══════════════════ */
+@media (max-width: 1024px) {
+  .cp__line { grid-template-columns: minmax(0, 1fr) 200px; }
+  .cp__tagWrap { grid-column: 1 / -1; }
+}
+@media (max-width: 768px) {
+  .cp { margin: 12px 0 40px; }
+  .cp__head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "fs fs" "quote go";
+    gap: 10px 16px;
+  }
+  .cp__quote { justify-self: start; text-align: left; max-width: 100%; padding-left: 14px; }
+  .cp__line { grid-template-columns: minmax(0, 1fr); }
+  .cp__bar { gap: 6px; padding: 8px 10px; }
+  .cp__key { --k-tile: 42px; }
+  .cp__sheet { --cp-rail: 14px; padding: 18px 18px 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cp *, .cp *::before, .cp *::after { transition: none !important; animation: none !important; }
+}

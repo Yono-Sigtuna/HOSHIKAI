@@ -1,0 +1,95 @@
+/* 星海社 · 顶栏「论坛 ▾」下拉（`menu.js` 的样式）
+   ==================================================================
+   选中版本：**星图窗 · 下划线**（用户 2026-11-02「下划线不错，采用」）。
+     · 面板 = 站里观测窗的皮：52px 经纬网 + 板底（亮色下网格压到 10%，暗色回到 .42 + 星野）
+     · 行与行差 4% 墨色（细微差分，不是斑马衫）
+     · hover 只在名字下方长一条金发丝线，整行底不动
+   颜色全部走站点令牌；天区色相走 --bh。 */
+
+/* ══════════════ 入口（与 .nav a 同一套骨相） ══════════════ */
+.nav-drop { position: relative; display: inline-flex; }
+.nav-drop > .nav__trig { display: inline-flex; align-items: center; }
+.nav__car {
+  width: 9px; height: 9px; margin: 2px 0 0 3px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round;
+  opacity: .65; transition: transform .18s var(--ease), opacity .18s var(--ease);
+}
+.nav-drop.is-open .nav__car { transform: rotate(180deg); opacity: 1; }
+
+/* ══════════════ 面板 ══════════════ */
+.nav__panel {
+  /* 位置由 menu.js 按触发器的 rect 写 left/top（面板挂在 body 上，不参与顶栏层叠） */
+  position: fixed; z-index: 140;
+  width: 800px; padding: 0; overflow: hidden;
+  border: 2px solid var(--hud-edge); border-radius: 6px;
+  background-color: transparent;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--hud-gold-s) 10%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--hud-gold-s) 10%, transparent) 1px, transparent 1px),
+    var(--hud-deep);
+  /* 52px：经纬网是疏的；26px 那种密网会读成方格纸 */
+  background-size: 52px 52px, 52px 52px, auto;
+  box-shadow: 4px 4px 0 var(--hud-shadow), inset 0 0 0 1px var(--hud-ice-w), 0 18px 48px rgba(4, 10, 26, .38);
+  color: var(--hud-ink);
+}
+[data-theme="dark"] .nav__panel {
+  background-image:
+    linear-gradient(var(--hud-gold-w) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hud-gold-w) 1px, transparent 1px),
+    var(--hud-stars), var(--hud-cloud), var(--hud-deep);
+  background-size: 52px 52px, 52px 52px, auto, auto, auto;
+}
+
+.nav__top {
+  margin: 0; padding: 9px 16px 8px;
+  border-bottom: 1px solid var(--hud-gold-w);
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .16em;
+  color: var(--hud-gold-s);
+}
+
+.nav__cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.nav__col { padding: 12px 14px 14px; }
+.nav__col + .nav__col { border-left: 1px solid var(--hud-gold-w); }
+.nav__hd {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 6px; padding-bottom: 7px;
+  border-bottom: 1px solid var(--hud-ice-w);
+  font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--hud-ink);
+}
+.nav__hd i {
+  margin-left: auto; font-style: normal;
+  font-family: var(--font-mono); font-size: 12px; color: var(--hud-ink-soft);
+}
+/* 天区标记：一枚四角星，填该天区色相 */
+.nav__star {
+  width: 13px; height: 13px; flex: none; background: hsl(var(--bh, 218) 62% 58%);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+}
+.nav__col ul { list-style: none; margin: 0; padding: 0; }
+.nav__a { display: block; padding: 7px 10px; border-radius: 4px; }
+.nav__a:focus-visible { outline: 2px solid var(--hud-gold-s); outline-offset: -2px; }
+.nav__a b { display: block; font-size: 14px; font-weight: 500; color: var(--hud-ink); }
+.nav__a span { display: block; margin-top: 1px; font-size: 12px; color: var(--hud-ink-soft); }
+
+/* 奇偶行差一档：4% 的墨色，够看出「这是一张表」 */
+.nav__col li:nth-child(even) { background: color-mix(in srgb, var(--hud-ink) 4%, transparent); }
+
+/* hover：金发丝线从名字左端往右长，整行底不动 */
+.nav__a b { position: relative; display: inline-block; }
+.nav__a b::after {
+  content: ""; position: absolute; left: 0; bottom: -2px; height: 1px; width: 0;
+  background: var(--hud-gold-s); transition: width .18s var(--ease);
+}
+.nav__a:hover b::after,
+.nav__a:focus-visible b::after { width: 100%; }
+.nav__a:hover b,
+.nav__a:focus-visible b { color: var(--hud-gold-s); }
+
+/* ══════════════ 窄屏 ══════════════
+   ≤900 时站点会把整条 `.nav` 藏起来（`style.css`），入口随之消失 ——
+   这是既有的移动端导航缺口，不在这里用 hack 顶开。 */
+@media (max-width: 1120px) {
+  .nav__panel { width: 660px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav__car, .nav__a b::after { transition: none !important; }
+}

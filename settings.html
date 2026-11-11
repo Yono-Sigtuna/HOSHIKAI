@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>观测者校准台 · 星海社</title>
+<meta name="description" content="星海社 galgame 论坛 · 观测者校准台：星名、账号、通知、隐私与外观">
+<script>document.documentElement.classList.add('js')</script>
+<script>(function(){try{var t=localStorage.getItem('hoshikai:theme');if(t!=='dark'&&t!=='light'){t='light';}document.documentElement.dataset.theme=t;}catch(e){}})();</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8' fill='%234a72e8'/%3E%3Ccircle cx='19' cy='5' r='2.4' fill='%23dfbd65'/%3E%3C/svg%3E">
+<script>/* 开屏只在本次会话第一次进站播；之后首帧前直接跳过 */
+try{if(localStorage.getItem("hoshikai:boot")==="1")document.documentElement.classList.add("boot-skip")}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="./fonts/fonts.css">
+<link rel="stylesheet" id="fontCss" href="./fonts/fonts.css" media="print" onload="this.media='all'">
+<script src="./boot.js" defer></script>
+<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./settings.css">
+<link rel="stylesheet" href="./menu.css">
+</head>
+<body>
+
+<!-- 开屏：字体没到不进场（逻辑见 boot.js，样式见 style.css 的 .boot 段） -->
+<div class="boot" id="boot" role="status" aria-live="polite">
+  <div class="boot__box">
+    <svg class="boot__dial" viewBox="0 0 200 200" aria-hidden="true">
+      <circle class="boot__ring" cx="100" cy="100" r="78"/>
+      <circle class="boot__ring boot__ring--i" cx="100" cy="100" r="58"/>
+      <ellipse class="boot__ec" cx="100" cy="100" rx="86" ry="32" transform="rotate(-23 100 100)"/>
+      <circle class="boot__pl" r="5.5"/>
+    </svg>
+    <p class="boot__t">星海社<span>正在校准星盘</span></p>
+    <div class="boot__bar" aria-hidden="true"></div>
+    <p class="boot__s">载入星图字体…</p>
+  </div>
+</div>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-orbit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-telescope" viewBox="0 0 76 75"><g fill="currentColor">
+    <path d="M31 46 L15.5 72.5 L21 72.5 L33 48.5 Z"/><path d="M31 46 L46.5 72.5 L41 72.5 L29 48.5 Z"/>
+    <path d="M31 46 L29.4 72.5 L32.6 72.5 L33 48.5 Z"/>
+    <rect x="20.5" y="58" width="21" height="3" rx="1.5" transform="rotate(-4 31 59.5)"/>
+    <rect x="26" y="36" width="10" height="11.5" rx="1.8"/><rect x="24.5" y="31.5" width="13" height="5.4" rx="1.8"/>
+    <g transform="rotate(-31 31 32)"><rect x="10.5" y="27.4" width="45" height="9.4" rx="2"/>
+      <rect x="52.5" y="25.2" width="7.6" height="13.8" rx="1.6"/><rect x="4.6" y="29" width="6.2" height="6.2" rx="1.5"/>
+      <rect x="22" y="17.6" width="21" height="4.2" rx="1.7"/><rect x="23" y="20.6" width="2.8" height="5.6" rx="1.1"/>
+      <rect x="39.4" y="20.6" width="2.8" height="5.6" rx="1.1"/></g></g></symbol>
+  <symbol id="i-telescope-tile" viewBox="0 0 40 40"><g fill="currentColor">
+    <g transform="rotate(-32 20 17)"><rect x="4" y="13.4" width="28" height="7.4" rx="1.6"/>
+      <rect x="30" y="11.8" width="6" height="10.6" rx="1.4"/><rect x="0.6" y="14.6" width="4.4" height="5" rx="1.2"/></g>
+    <rect x="17.2" y="21" width="5.6" height="4.6" rx="1.2"/>
+    <path d="M20 24.5 L12.6 38.5 L16.7 38.5 L21 26.4 Z"/><path d="M20 24.5 L27.4 38.5 L23.3 38.5 L19 26.4 Z"/>
+    <path d="M20 24.5 L19.2 38.5 L20.8 38.5 L21 26.4 Z"/></g></symbol>
+  <symbol id="i-stars4" viewBox="0 0 24 24"><g fill="currentColor">
+    <path d="M15.4 2.6c.5 3.6 2.1 5.2 5.7 5.7-3.6.5-5.2 2.1-5.7 5.7-.5-3.6-2.1-5.2-5.7-5.7 3.6-.5 5.2-2.1 5.7-5.7Z"/>
+    <path d="M6.1 10.9c.32 2.3 1.35 3.33 3.65 3.65-2.3.32-3.33 1.35-3.65 3.65-.32-2.3-1.35-3.33-3.65-3.65 2.3-.32 3.33-1.35 3.65-3.65Z"/>
+    <circle cx="18.6" cy="14.9" r="1.5"/><circle cx="7.2" cy="20.4" r="1.05"/></g></symbol>
+  <symbol id="i-reply" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="k-finder" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.4"/><path d="M12 4.6V19.4M4.6 12H19.4"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="k-atlas" viewBox="0 0 24 24"><circle cx="4.6" cy="7" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.6" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.6" cy="17" r="1.6" fill="currentColor" stroke="none"/><path d="M8.8 7h11.6M8.8 12h11.6M8.8 17h11.6"/></symbol>
+  <symbol id="k-dusk" viewBox="0 0 24 24"><path d="M3 16.8h18"/><path d="M8.2 16.8A3.8 3.8 0 0 0 15.8 16.8"/><path d="M16.8 7l.67 1.73L19.2 9.4l-1.73.67L16.8 11.8l-.67-1.73L14.4 9.4l1.73-.67z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="k-star4" viewBox="0 0 24 24"><path d="M12 3.4 14.24 9.76 20.6 12l-6.36 2.24L12 20.6l-2.24-6.36L3.4 12l6.36-2.24z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="k-lockon" viewBox="0 0 24 24">
+    <path d="M3.6 7.8V5.4A1.8 1.8 0 0 1 5.4 3.6h2.4M16.2 3.6h2.4a1.8 1.8 0 0 1 1.8 1.8v2.4M20.4 16.2v2.4a1.8 1.8 0 0 1-1.8 1.8h-2.4M7.8 20.4H5.4a1.8 1.8 0 0 1-1.8-1.8v-2.4"/>
+    <path d="M12 8.7l.92 2.38L15.3 12l-2.38.92L12 15.3l-.92-2.38L8.7 12l2.38-.92z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="k-scope" viewBox="0 0 24 24">
+    <g transform="rotate(-32 15 12)"><rect x="1.5" y="9.4" width="19" height="5.2" rx="1.1"/>
+      <rect x="19.6" y="8.3" width="3.4" height="7.4" rx="0.9"/><rect x="0.2" y="10.2" width="2.8" height="3.6" rx="0.8"/></g>
+    <path d="M15 15.4 12.2 21.6h1.9L16 16.6zM15 15.4l2.8 6.2h-1.9L13.9 16.6z"/>
+    <circle cx="21.6" cy="4.4" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="k-zenith" viewBox="0 0 24 24"><path d="M3.4 20.4h17.2M12 20.4V7.2M9.4 9.8 12 7.2l2.6 2.6"/><circle cx="12" cy="4.4" r="1.4"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="wrap topbar__inner">
+    <a class="brand" href="./">
+      <span class="brand__mark"><svg class="i"><use href="#i-orbit"/></svg></span>
+      <span class="brand__text"><strong>星海社</strong><em>HOSHIKAI</em></span>
+    </a>
+    <nav class="nav" id="nav" aria-label="主导航">
+      <a href="./"><i><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-stars4"/></svg></i>首页</a>
+      <a href="./forum/1-1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>星图馆</a>
+      <a href="./forum/2-1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>创作所</a>
+      <a href="./forum/3-1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>观测台</a>
+      <a href="./space/1/" aria-current="page"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>个人空间</a>
+      <a href="./msg/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>消息</a>
+    </nav>
+    <div class="tools">
+      <form class="search" role="search" action="./search/" method="get">
+        <svg class="i"><use href="#i-search"/></svg>
+        <input type="search" name="q" placeholder="搜索作品 / 帖子 / 用户" aria-label="站内搜索">
+      </form>
+      <button class="theme-tg" id="themeTg" type="button" aria-label="切换到夜间模式" aria-pressed="false">
+        <svg class="theme-tg__moon" aria-hidden="true"><use href="#i-moon"/></svg>
+        <svg class="theme-tg__sun" aria-hidden="true"><use href="#i-sun"/></svg>
+      </button>
+      <a class="btn btn--ghost" href="./login.html">登录</a>
+      <a class="btn btn--solid" href="./register.html">注册</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap set" id="top">
+  <nav class="set-crumb" aria-label="位置">
+    <a href="./">首页</a><span aria-hidden="true">/</span>
+    <a href="./space/1/">个人空间</a><span aria-hidden="true">/</span>
+    <b aria-current="page">校准台</b>
+  </nav>
+
+  <header class="set-hero">
+    <div>
+      <h1 class="set-h1" aria-label="观测者校准台"><span class="set-h1__fs" id="setFs" aria-hidden="true"></span></h1>
+      <p>改的是别人在帖子和空间里看到的样子，以及站里怎么找你。改动保存在本机。</p>
+    </div>
+    <span class="set-hero__no" aria-hidden="true">NO. 0117</span>
+  </header>
+
+  <div class="set-grid">
+    <aside class="set-rail">
+      <section class="set-id" aria-label="档案预览">
+        <span class="set-id__av" id="setAv" style="--ah:218" aria-hidden="true">夜</span>
+        <b class="set-id__nm" id="setIdName">夜狩</b>
+        <p class="set-id__meta"><span class="mag"><svg class="i" aria-hidden="true"><use href="#i-stars4"/></svg><b>2.3</b> 等</span><span>加入于 2026 年 4 月</span></p>
+        <p class="set-id__live"><span class="set-dot" aria-hidden="true"></span>左卡实时预览</p>
+      </section>
+      <nav class="set-nav" aria-label="设置分区">
+        <a href="#profile" aria-current="true">档案</a>
+        <a href="#account">账号</a>
+        <a href="#notify">通知</a>
+        <a href="#privacy">隐私</a>
+        <a href="#look">外观</a>
+        <a href="#danger">危险区</a>
+      </nav>
+    </aside>
+
+    <div class="set-panels">
+      <section class="set-sec" id="profile" aria-labelledby="setHProfile">
+        <header class="set-sec__hd">
+          <h2 id="setHProfile"><svg class="i" aria-hidden="true"><use href="#k-scope"/></svg>档案</h2>
+          <p>帖子里、空间里、搜索结果里，别人看到的就是这几项。</p>
+        </header>
+        <div class="set-rows">
+          <div class="set-row">
+            <div class="set-lbl"><label for="setName">星名</label><p>2–16 字。全站显示名，头像首字取自这里。</p></div>
+            <div class="set-ctl">
+              <div class="set-field"><input class="set__in" id="setName" type="text" maxlength="16" autocomplete="nickname"><span class="set-count" id="setNameN">0/16</span></div>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-lbl"><label for="setSign">签名</label><p>一句话，挂在空间抬头下面。</p></div>
+            <div class="set-ctl">
+              <div class="set-field"><input class="set__in" id="setSign" type="text" maxlength="32" placeholder="例：在星轨与海之间"><span class="set-count" id="setSignN">0/32</span></div>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-lbl"><label for="setBio">自我介绍</label><p>最多 120 字。只显示在个人空间。</p></div>
+            <div class="set-ctl">
+              <div class="set-field set-field--area"><textarea class="set__area" id="setBio" rows="4" maxlength="120" placeholder="喜欢什么类型的作品、常在哪个板块出没……"></textarea><span class="set-count" id="setBioN">0/120</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="set-sec" id="account" aria-labelledby="setHAccount">
+        <header class="set-sec__hd">
+          <h2 id="setHAccount"><svg class="i" aria-hidden="true"><use href="#k-finder"/></svg>账号</h2>
+          <p>演示站不保存账号：这里的邮箱只留在本机，密码不会写入任何地方。</p>
+        </header>
+        <div class="set-rows">
+          <div class="set-row">
+            <div class="set-lbl"><label for="setMail">邮箱</label><p>用于找回密码和接收站务通知。</p></div>
+            <div class="set-ctl">
+              <div class="set-field"><input class="set__in" id="setMail" type="email" autocomplete="email" placeholder="you@example.com"></div>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-lbl"><label for="setPwOld">修改密码</label><p>演示站不校验、不保存密码；正式站会接后端。</p></div>
+            <div class="set-ctl set-ctl--stack">
+              <input class="set__in" id="setPwOld" type="password" autocomplete="current-password" placeholder="当前密码">
+              <input class="set__in" id="setPwNew" type="password" autocomplete="new-password" placeholder="新密码，至少 8 位">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="set-sec" id="notify" aria-labelledby="setHNotify">
+        <header class="set-sec__hd">
+          <h2 id="setHNotify"><svg class="i" aria-hidden="true"><use href="#k-zenith"/></svg>通知</h2>
+          <p>和消息页的五类是同一套分类。关掉的类目不再送你进收件箱。</p>
+        </header>
+        <ul class="set-toggles" role="list">
+          <li class="set-toggle"><span class="set-toggle__ic"><svg class="i"><use href="#i-reply"/></svg></span><div><b>回复我的帖子</b><p>有人在你发的帖子下回复。</p></div><button class="set-sw" type="button" role="switch" aria-checked="true" data-k="reply" aria-label="回复我的帖子"><span class="set-sw__scale"></span><span class="set-sw__star"></span></button></li>
+          <li class="set-toggle"><span class="set-toggle__ic"><svg class="i"><use href="#k-star4"/></svg></span><div><b>收藏与加精</b><p>你的帖子被收藏，或被版主加精。</p></div><button class="set-sw" type="button" role="switch" aria-checked="true" data-k="star" aria-label="收藏与加精"><span class="set-sw__scale"></span><span class="set-sw__star"></span></button></li>
+          <li class="set-toggle"><span class="set-toggle__ic"><svg class="i"><use href="#k-lockon"/></svg></span><div><b>有人提到我</b><p>正文或回复里 @ 了你的星名。</p></div><button class="set-sw" type="button" role="switch" aria-checked="true" data-k="mention" aria-label="有人提到我"><span class="set-sw__scale"></span><span class="set-sw__star"></span></button></li>
+          <li class="set-toggle"><span class="set-toggle__ic"><svg class="i"><use href="#k-scope"/></svg></span><div><b>新的关注者</b><p>有人把你的空间加入常看。</p></div><button class="set-sw" type="button" role="switch" aria-checked="false" data-k="follow" aria-label="新的关注者"><span class="set-sw__scale"></span><span class="set-sw__star"></span></button></li>
+          <li class="set-toggle"><span class="set-toggle__ic"><svg class="i"><use href="#k-zenith"/></svg></span><div><b>站务与公告</b><p>版本更新、活动、维护通知。</p></div><button class="set-sw" type="button" role="switch" aria-checked="true" data-k="system" aria-label="站务与公告"><span class="set-sw__scale"></span><span class="set-sw__star"></span></button></li>
+        </ul>
+      </section>
+
+      <section class="set-sec" id="privacy" aria-labelledby="setHPrivacy">
+        <header class="set-sec__hd">
+          <h2 id="setHPrivacy"><svg class="i" aria-hidden="true"><use href="#k-lockon"/></svg>隐私</h2>
+          <p>谁能靠近你，以及哪些东西公开。</p>
+        </header>
+        <div class="set-rows">
+          <div class="set-row">
+            <div class="set-lbl"><span class="set-lbl__t">谁能给我发私信</span><p>私信在底部文本框模块的「私信」键里；这里定的是谁可以找你。</p></div>
+            <div class="set-ctl">
+              <div class="set-choice" role="radiogroup" aria-label="谁能给我发私信">
+                <label><input type="radio" name="setDm" value="all" checked><span>所有人</span></label>
+                <label><input type="radio" name="setDm" value="follow"><span>我关注的人</span></label>
+                <label><input type="radio" name="setDm" value="off"><span>关闭</span></label>
+              </div>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-lbl"><span class="set-lbl__t">公开 galgame 履历</span><p>关闭后只有你自己看得到。</p></div>
+            <div class="set-ctl"><button class="set-sw" type="button" role="switch" aria-checked="true" data-k="gal" aria-label="公开 galgame 履历"><span class="set-sw__scale"></span><span class="set-sw__star"></span></button></div>
+          </div>
+          <div class="set-row">
+            <div class="set-lbl"><label for="setBlockIn">黑名单</label><p>拉黑后看不到对方的帖子与回复，也不收私信。</p></div>
+            <div class="set-ctl">
+              <div class="set-block">
+                <div class="set-field"><input class="set__in" id="setBlockIn" type="text" maxlength="16" placeholder="输入星名，回车加入"></div>
+                <ul class="set-chips" id="setChips" aria-label="黑名单"></ul>
+                <p class="set-empty" id="setChipsEmpty">还没有拉黑任何人。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="set-sec" id="look" aria-labelledby="setHLook">
+        <header class="set-sec__hd">
+          <h2 id="setHLook"><svg class="i" aria-hidden="true"><use href="#k-dusk"/></svg>外观</h2>
+          <p>和右上角的昼夜开关是同一个设置，改哪边都一样。</p>
+        </header>
+        <div class="set-rows">
+          <div class="set-row">
+            <div class="set-lbl"><span class="set-lbl__t">主题</span><p>夜间是深空底，星点会更亮。</p></div>
+            <div class="set-ctl">
+              <div class="set-choice" role="radiogroup" aria-label="主题">
+                <label><input type="radio" name="setTheme" value="light"><span>亮色</span></label>
+                <label><input type="radio" name="setTheme" value="dark"><span>暗色</span></label>
+              </div>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-lbl"><span class="set-lbl__t">动效</span><p>站里的动画会跟随系统的「减少动态效果」设置。</p></div>
+            <div class="set-ctl"><p class="set-static" id="setRmNote">跟随系统设置</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="set-sec set-sec--danger" id="danger" aria-labelledby="setHDanger">
+        <header class="set-sec__hd">
+          <h2 id="setHDanger">危险区</h2>
+          <p>演示站不保存账号。注销只会清除这台机器上的会话与设置。</p>
+        </header>
+        <div class="set-row set-row--danger">
+          <div class="set-lbl"><span class="set-lbl__t">注销本机账号</span><p>退出登录，并删除本机保存的档案、通知与隐私设置。</p></div>
+          <div class="set-ctl"><button class="btn btn--ghost set-danger-btn" id="setKill" type="button">注销本机账号</button></div>
+        </div>
+      </section>
+
+      <div class="set-savebar" id="setSavebar" hidden>
+        <span class="set-savebar__t">有未保存的改动</span>
+        <span class="set-savebar__grow"></span>
+        <button class="btn btn--ghost" id="setReset" type="button">撤销</button>
+        <button class="btn btn--solid" id="setSave" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <!-- ⚠️ 整块照抄 v3p 首页的 .title：四层背景（CG / 极光 / 星盘 / 流星）+ 内容层 .title__in。
+       星盘和菜单的 DOM 由 footer.js 补；.title 里就地写死深底文字令牌，不跟主题走。 -->
+  <section class="title" aria-label="站点标题画面">
+    <div class="title__bg" aria-hidden="true"></div>
+    <div class="title__aur" aria-hidden="true"></div>
+    <svg class="dial title__dial" aria-hidden="true"></svg>
+    <div class="title__sky" aria-hidden="true"><span class="shoot" style="--x:62%;--y:6%;--a:32deg;--dur:13s;--del:1.5s"></span><span class="shoot" style="--x:78%;--y:18%;--a:28deg;--dur:17s;--del:6.5s"></span><span class="shoot" style="--x:40%;--y:4%;--a:38deg;--dur:19s;--del:11s"></span></div>
+    <div class="wrap title__in">
+      <div class="title__lead">
+        <p class="title__eye">HOSHIKAI<span> · GALGAME OBSERVERS</span> · <span data-logdate></span></p>
+        <p class="title__logo"><span class="title__mk"><span class="lt title__c" style="--i:0">星</span><span class="lt title__c" style="--i:1">海</span><span class="lt title__c" style="--i:2">社</span><svg class="title__orb" viewBox="0 0 200 60" aria-hidden="true"><ellipse cx="100" cy="30" rx="96" ry="22"/><circle class="title__moon" r="4"><animateMotion dur="11s" repeatCount="indefinite" path="M4 30a96 22 0 1 0 192 0a96 22 0 1 0-192 0"/></circle></svg></span><span class="title__en">HOSHIKAI · Night Log</span></p>
+        <p class="title__tag" data-tagline></p>
+        <div class="menuw"><svg class="menu__cst" aria-hidden="true"></svg><ol class="menu">
+        <li><a class="menu__i" href="./sitemap/"><span class="menu__k">SITEMAP</span><span class="menu__t">站点地图</span><span class="menu__d">全站页面索引</span></a></li>
+        <li><a class="menu__i" href="./rules/"><span class="menu__k">RULES</span><span class="menu__t">版规总则</span><span class="menu__d">观测前先读这个</span></a></li>
+        <li><a class="menu__i" href="./links/"><span class="menu__k">LINKS</span><span class="menu__t">友情链接</span><span class="menu__d">邻接的天文台</span></a></li>
+        <li><a class="menu__i" href="./contact/"><span class="menu__k">CONTACT</span><span class="menu__t">联系我们</span><span class="menu__d">给理事会发信</span></a></li>
+        <li><span class="menu__i is-off" aria-disabled="true"><span class="menu__k">HISTORY</span><span class="menu__t">历史</span><span class="menu__d">观测记录 · 还没做</span></span></li>
+        </ol></div>
+      </div>
+      <dl class="title__sys" aria-label="站点读数">
+        <div><dt>观测者</dt><dd data-stat="members">—</dd></div>
+        <div><dt>星体</dt><dd data-stat="threads">—</dd></div>
+        <div><dt>今夜新帖</dt><dd data-stat="todayPosts">—</dd></div>
+        <div><dt>在台</dt><dd data-stat="online">—</dd></div>
+      </dl>
+      <div class="title__ann">
+        <span class="title__plate">理事会<small data-ann-tag></small></span>
+        <p class="title__annT"><a href="./board.html?b=1-1" data-ann-title></a></p>
+        <p class="title__annB"><span class="sr" data-ann-body></span><span class="tw" aria-hidden="true"></span><span class="caret" aria-hidden="true"></span></p>
+        <svg class="title__next" viewBox="0 0 10 8" aria-hidden="true"><path d="M0 0l5 8 5-8z" fill="currentColor"/></svg>
+      </div>
+    </div>
+  </section>
+  <div class="wrap footer__note"></div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="./shared/data.js"></script>
+<script src="./theme.js"></script>
+<script src="./session.js"></script>
+<script src="./viewer.js"></script>
+<script src="./settings.js"></script>
+<script src="./menu.js"></script>
+<script src="./starbtn.js"></script>
+<script src="./footer.js"></script>
+</body>
+</html>

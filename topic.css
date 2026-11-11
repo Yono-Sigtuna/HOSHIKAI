@@ -1,0 +1,658 @@
+/* 星海社 · 帖子详情页
+   只补板块页没有的东西：标题弧 + 完整标题、话题信息条与帖子操作下拉、作品信息卡、
+   可折叠章节（原生 details）、截图网格、下载说明、回复列表与回复框。
+   颜色一律取 style.css 的令牌 + `--hue-*` 色相派生，本文件不新增任何颜色字面量
+   （唯一的写死白色在深色语境：压在 OPENING 海报上的字，那层用的是首页 .op 的原样式）。 */
+
+/* ============ 阅读进度（抄自 v3p 帖子页）============
+   顶栏底边一条金线：长度＝已读比例，右端一颗发光的光点。
+   纯 CSS 滚动驱动（`animation-timeline: scroll(root)`），**不挂 scroll 事件**。
+   ⚠️ 位置：v3p 写的是 `fixed; top: 60px`（它的顶栏内高 60 + 1px 边框、且常驻）。
+      v2p 顶栏内高 62 + 下边框 2 ⇒ `top: 62px`，正好压在边框上，视觉与 v3p 同义。
+   ⚠️ v2p 的顶栏向下滚会整条退场（`html.nav-hide .topbar` 的 opacity:0 + visibility:hidden），
+      所以 `.prog` 必须是顶栏的**兄弟**、且自己也跟着让位：退场时贴到视口最上沿。
+      否则「阅读进度」恰好在阅读时消失，这个功能就白抄了。 */
+.prog { position: fixed; left: 0; right: 0; top: 62px; height: 2px; z-index: 51; pointer-events: none;
+  transition: top .2s var(--ease); }
+html.nav-hide .prog { top: 0; transition: top .3s var(--ease); }
+.prog i {
+  position: absolute; inset: 0; transform-origin: left; scale: 0 1;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--y500) 50%, transparent) 60%, var(--y500));
+  animation: prog linear both; animation-timeline: scroll(root);
+}
+.prog b {
+  position: absolute; top: -3px; left: 0; width: 8px; height: 8px; border-radius: 50%;
+  /* ⚠️ 用 --y400 不用 --y200：暗色主题把 --y100/200/300 覆写成了深蓝底料，
+     光点会变成一颗黑豆子。--y400 两套主题都是奶金色。 */
+  background: var(--y400); box-shadow: 0 0 10px 3px var(--y500);
+  animation: progB linear both; animation-timeline: scroll(root);
+}
+@keyframes prog { to { scale: 1 1; } }
+@keyframes progB { to { left: calc(100% - 8px); } }
+/* 不支持滚动驱动动画的浏览器：`animation` 的 0s 时长 + fill:both 会把线直接拉满，
+   变成一条常亮的金线 —— 不如整条藏掉。Chrome / Safari 18+ 走上面的分支，不受影响。 */
+@supports not (animation-timeline: scroll()) { .prog { display: none; } }
+
+/* ============ 加载骨架屏 ============
+   帖子页整页 JS 渲染，白屏期显示一个简化骨架。渲染完成后 topic.js 会在 #topic 上加 .is-loaded。 */
+.tp-skeleton {
+  padding: 80px 0 60px;
+  animation: tp-fade-in .32s var(--ease);
+}
+.tp-skeleton__head {
+  height: 160px; margin-bottom: 32px; border-radius: var(--r-lg);
+  background: linear-gradient(135deg, var(--c200) 0%, var(--c300) 100%);
+  position: relative; overflow: hidden;
+}
+.tp-skeleton__head::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.4) 50%, transparent 100%);
+  animation: tp-shimmer 1.8s ease-in-out infinite;
+}
+.tp-skeleton__line {
+  height: 20px; margin-bottom: 16px; border-radius: var(--r-sm);
+  background: var(--c200);
+  position: relative; overflow: hidden;
+}
+.tp-skeleton__line::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.4) 50%, transparent 100%);
+  animation: tp-shimmer 1.8s ease-in-out infinite;
+  animation-delay: .2s;
+}
+.tp-skeleton__line:nth-child(2) { width: 85%; }
+.tp-skeleton__line:nth-child(3) { width: 70%; }
+
+@keyframes tp-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+@keyframes tp-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 内容加载完成后淡入 */
+.tp-skeleton {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: var(--surface);
+  opacity: 1;
+  pointer-events: all;
+  transition: opacity .42s var(--ease);
+}
+#topic.is-loaded .tp-skeleton {
+  opacity: 0;
+  pointer-events: none;
+}
+#topic.is-loaded {
+  animation: tp-fade-in .42s var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-skeleton, .tp-skeleton__head::after, .tp-skeleton__line::after, #topic.is-loaded { animation: none; transition: none; }
+}
+
+/* ============ 页头：逐字大标题压在轨道弧上 ============
+   弧是 head 的绝对定位子元素（`.orbit--head` 的几何在 forum.css 里，直接复用）。
+   head 顶部留 58px 给弧：弧的两端最低点在 y≈53，正好落在标题内容区上方，
+   于是字是「压在弧下」而不是「被弧穿过」。（board.html 的板块头没有这段留白，
+   因为那里弧与标题本来就是一体的；帖内页标题更长，穿过会糊。） */
+/* ⚡ 容器查询上下文：本页所有 `cqw` 都相对**内容栏**（而不是视口）解析。
+   ⚠️ 挂在这里（`.tp`）而**不是 `main.wrap`** —— 本页的 `.toast` 就住在 main 里面，
+      而 `container-type: inline-size` 会带上 `contain: layout`，那会让 `position: fixed`
+      的祖先链改道 ⇒ 提示条会从「钉在视口底部」变成「钉在页面底部」，滚走就看不见了。
+      `.tp` 里没有任何 fixed 元素，挂在它是安全的。 */
+.tp { --hue: 218; container-type: inline-size; }
+.tp__head { position: relative; margin-top: 14px; padding-top: 58px; }
+/* 大弧：新几何（BASE 40 / APEX −28）比旧的高，沿用 `top:-46` 会顶到面包屑上 ⇒ 往下让 54px，
+   让它横在格子条上方、两端落在页头顶边。 */
+.tp__head .orbit--head { top: 54px; }
+
+/* 帖子页大轨道入场：clip 从左扫到右（虚线 + 不做 dashoffset 生长，与首页/板块页同）。
+   ⚠️ 选择器必须锁死 `.orbit--head`：写成 `.tp__head .orbit__line` 会把格子条里那条
+   **小弧 `.fs__arc` 也改成虚线**（2026-11-07 用户：「帖子页格子条上面的小轨道为什么变成虚线了」）。
+   小弧走 style.css 的 `.js .orbit__line`（dasharray 1200 = 看着是实线 + dashoffset 抬进）。 */
+.js .orbit--head .orbit__line { stroke-dasharray: 2 5; stroke-dashoffset: 0 !important; transition: none;
+  clip-path: inset(0 100% 0 0); }
+.tp__head.is-drawn .orbit--head .orbit__line { clip-path: inset(0 0 0 0); transition: clip-path .9s var(--ease) .25s; }
+.js .orbit--head .orbit__spark { opacity: 0; transition: opacity .5s var(--ease); }
+.tp__head.is-drawn .orbit--head .orbit__spark { opacity: 1; }
+
+/* ============ 信息大板块：标题 · 帖子数据 · TAG 合成**一张卡** ============
+   第 34 轮。这三块原来是三张各带边框的小卡（`.tp__banner` / `.tpMeta` / `.tpTags`），
+   一张压一张叠在头部下面；用户点名要的是「合成一张大卡、用分割线分层」。
+   ⚠️ **卡面只由 `.mg` 一处给**（边框 / 圆角 / 底色 / 投影）—— 给内层再加边框就成「卡中卡」。
+   ⚠️ `.mg::before` 那条板块色竖条从 `.tp__banner` 原样搬来：它一个元素同时说明「在哪个板块」。 */
+.mg {
+  position: relative; overflow: hidden; margin-top: 4px;
+  border: 1.5px solid var(--line-soft); border-radius: var(--r);
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  box-shadow: var(--shadow-sm);
+}
+.mg::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  border-radius: var(--r) 0 0 var(--r);
+  background: linear-gradient(hsl(var(--hue) 72% 64%), hsl(var(--hue) 62% 46%));
+}
+.mg__band { padding: 13px 18px; }
+.mg__band--tight { padding: 10px 18px; }
+
+/* —— 标题 —— */
+.mg__t {
+  margin: 0; font-family: var(--font-display); font-weight: 700; line-height: 1.42;
+  font-size: clamp(17px, 1.7cqw, 25px); color: var(--ink-deep); overflow-wrap: anywhere;
+}
+.mg__origin {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  margin: 8px 0 0; font-size: 12px; color: var(--ink-soft);
+}
+.mg__origin a { color: var(--link); }
+.mg__origin a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.mg__origin .i { width: 13px; height: 13px; color: hsl(var(--hue) var(--hue-fg-s) var(--hue-fg-l)); }
+
+/* —— 帖子数据行 + 收藏 —— */
+.mg__stats { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; }
+.mg__stat { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-soft); }
+.mg__stat .i { width: 13px; height: 13px; color: var(--c700); }
+.mg__stat b { font-family: var(--font-mono); font-size: 13px; color: var(--ink-deep); font-variant-numeric: tabular-nums; }
+/* 发帖时间：帖的属性（不是作者档案的），所以它跟着这一行走，不跟作者去 HUD */
+.mg__stat--time { color: var(--ink-faint); font-family: var(--font-mono); }
+.mg__stat--time .i { width: 11px; height: 11px; }
+.mg__mag { margin-left: 0; }
+.mg__fav {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px;
+  border: 1.5px solid var(--c500); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--link); cursor: pointer;
+  font: inherit; font-size: 12.5px; font-weight: 500;
+  transition: background .18s var(--ease), border-color .18s var(--ease);
+}
+.mg__fav:hover { background: var(--c200); border-color: var(--c700); }
+.mg__fav[aria-pressed="true"] { background: var(--c200); border-color: var(--c700); color: var(--ink-deep); }
+.mg__fav[aria-pressed="true"] .i { fill: currentColor; }
+.mg__fav .i { width: 14px; height: 14px; }
+
+/* ============ 大板块里的两道分割线 ============
+   ⚠️⚠️ 选材换过一次，**别改回去**：第一版用的「弧 / 流星 / 刻度尺」三条**全站都已经用过** ——
+      弧就在这块卡头顶 30px、流星就是下面那条标签带本身、刻度是立绘框那把尺。
+      用户判词：「为什么还要有星轨元素呢？为什么又要无脑加刻度呢？你除了这 2 个，
+      拿不出什么新元素去做设计了吗？」（§2.162「往一个地方薅羊毛」的第三次。）
+   现在这两族**全站此前的使用次数 = 0**：
+      ① ⑨ 遮挡·掩食（日食环）—— 结构是**一个质量点**
+      ② ⑦ 数量·密度（柯伊伯带）—— 结构是**一片点**
+   ⚠️ 只留**两道**：卡的下边框本来就收住了 TAG，再补一道纯属装饰（用户：「过度设计」）。 */
+.dv { position: relative; margin: 0 18px; pointer-events: none; }
+
+/* ① 掩食：一条渐隐的发丝线 + 一枚带光晕的圆盘。读法＝「一个天体挡住另一个 ⇒ 分界」。 */
+.dv--eclipse { display: flex; align-items: center; height: 18px; }
+.dv--eclipse .dv__rule { flex: 1 1 auto; height: 1px; }
+.dv--eclipse .dv__rule--l { background: linear-gradient(90deg, transparent, hsl(var(--hue, 218) var(--hue-fg-s) var(--hue-fg-l) / .5)); }
+.dv--eclipse .dv__rule--r { background: linear-gradient(90deg, hsl(var(--hue, 218) var(--hue-fg-s) var(--hue-fg-l) / .5), transparent); }
+.dv--eclipse .dv__disc {
+  flex: none; width: 12px; height: 12px; margin: 0 9px; border-radius: 50%;
+  background: var(--ink-deep);
+  box-shadow: 0 0 0 1.5px hsl(var(--hue, 218) var(--hue-fg-s) var(--hue-fg-l) / .55),
+              0 0 8px hsl(var(--hue, 218) var(--hue-fg-s) var(--hue-fg-l) / .35);
+}
+
+/* ② 柯伊伯带：一条疏密不等的碎点带。读法＝「带」。
+   ⚠️ 刻意**不带尾巴** —— 有亮头的是下面那条标签带，两者不该被读成同一个装置。 */
+.dv--kuiper { height: 12px; }
+.dv--kuiper i {
+  position: absolute; transform: translate(-50%, -50%); border-radius: 50%;
+  background: hsl(var(--hue, 218) var(--hue-fg-s) var(--hue-fg-l));
+}
+
+/* ---- 本帖标签带：与首页「热门 TAG」同一个装置（`.shower*` 在 style.css，直接复用）----
+   ⚠️ 第 34 轮起它住在大板块里 ⇒ **卡面是 `.mg` 给的**，这三行把原来那套卡面清掉，
+      否则会出现「卡里套卡」。它现在只负责那一条流星。
+   ⚠️ 标签**不再折叠**（用户要求常显全部），所以没有 +N 按钮、没有 `.is-extra`。
+   ⚠️ 颜色只有两个：站里的蓝，第 1 名换金 —— 跟首页同一条纪律。 */
+.tpTags { margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+.tpTags .shower { padding: 0; }
+.tpTags .shower__row { gap: 8px 7px; }
+
+/* ---- 帖子操作下拉（disclosure：按钮 + 菜单，键盘全可用） ---- */
+.tpAct { position: relative; margin-left: auto; }
+.tpAct__b {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px;
+  border: 1.5px solid var(--c500); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--link); cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 500;
+  transition: background .18s var(--ease), border-color .18s var(--ease);
+}
+.tpAct__b:hover { background: var(--c200); border-color: var(--c700); }
+.tpAct__b[aria-expanded="true"] { background: var(--c200); border-color: var(--c700); }
+.tpAct__b .i { width: 14px; height: 14px; }
+.tpAct__chev { transition: transform .2s var(--ease); }
+.tpAct__b[aria-expanded="true"] .tpAct__chev { transform: rotate(180deg); }
+/* 不写 display：让 [hidden] 的原生 display:none 说了算（写了 flex 就盖不掉了） */
+.tpAct__m {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+  min-width: 176px; padding: 6px; margin: 0; list-style: none;
+  border: 1.5px solid var(--c400); border-radius: var(--r);
+  background: var(--surface); box-shadow: var(--shadow-lg);
+}
+.tpAct__i {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 8px 10px; border: 0; border-radius: var(--r-sm);
+  background: none; cursor: pointer; text-align: left;
+  font: inherit; font-size: 13px; color: var(--ink);
+  transition: background .16s var(--ease), color .16s var(--ease);
+}
+.tpAct__i:hover { background: var(--c200); color: var(--link); }
+.tpAct__i .i { width: 14px; height: 14px; color: var(--c700); }
+
+/* ============ 卡片外壳（作品信息 / 回复区共用） ============ */
+.tpCard { margin-top: 40px; }
+.tpCard__no {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .14em;
+  color: var(--y-text); white-space: nowrap;
+}
+
+/* ---- 作品信息：定义列表 ---- */
+.tpInfo {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 26px;
+  margin: 0; padding: 4px 16px 8px;
+  border: 1.5px solid var(--line-soft); border-radius: var(--r);
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  box-shadow: var(--shadow-sm);
+}
+.tpInfo__r {
+  display: grid; grid-template-columns: 5.6em minmax(0, 1fr); gap: 10px;
+  align-items: baseline; padding: 10px 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+.tpInfo__r dt { font-size: 12px; color: var(--ink-soft); white-space: nowrap; }
+.tpInfo__r dd { margin: 0; font-size: 14px; color: var(--ink); overflow-wrap: anywhere; }
+.tpInfo__r dd.is-score {
+  font-family: var(--font-mono); font-weight: 700; font-size: 15px; color: var(--y-ink);
+}
+
+/* ============ 可折叠章节（原生 details） ============ */
+.tpChaps { margin-top: 40px; display: flex; flex-direction: column; gap: 12px; }
+.tpChap {
+  border: 1.5px solid var(--line-soft); border-radius: var(--r);
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  box-shadow: var(--shadow-sm); overflow: hidden;
+}
+.tpChap[open] { border-color: var(--c500); box-shadow: var(--glow); }
+.tpChap__s {
+  display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap;
+  padding: 13px 16px; cursor: pointer; list-style: none;
+  transition: background .18s var(--ease);
+}
+.tpChap__s::-webkit-details-marker { display: none; }
+.tpChap__s:hover { background: var(--c200); }
+.tpChap__s:focus-visible { outline: 2px solid var(--c700); outline-offset: -3px; }
+.tpChap__n {
+  flex: none; padding: 1px 8px; border-radius: var(--r-sm);
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em;
+  border: 1.5px solid hsl(var(--hue) var(--hue-bd-s) var(--hue-bd-l));
+  background: hsl(var(--hue) var(--hue-bg-s) var(--hue-bg-l));
+  color: hsl(var(--hue) var(--hue-fg-s) var(--hue-fg-l));
+}
+.tpChap__t { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--ink-deep); }
+.tpChap__x { font-size: 12px; color: var(--ink-soft); }
+.tpChap__chev { width: 16px; height: 16px; margin-left: auto; color: var(--ink-soft); transition: transform .22s var(--ease); }
+.tpChap[open] .tpChap__chev { transform: rotate(180deg); }
+.tpChap__b { padding: 2px 16px 18px; border-top: 1.5px solid var(--line-soft); }
+
+/* ---- OPENING：没有视频文件，做成海报 + 播放按钮（沿用首页 .op 的原样式） ---- */
+.tpOp { max-width: 780px; margin: 14px auto 0; }
+
+/* ---- 正文 ---- */
+.tpProse {
+  margin: 12px 0 0; max-width: 43em;   /* 用 em 不用 ch：ch 随回退字体浮动，行宽会跳 */
+  font-size: 15px; line-height: 1.95; color: var(--ink);
+  text-align: justify;
+}
+.tpProse--tight { margin-bottom: 2px; }
+/* 正文里闪烁的星星：GALBase 在正文中用 gs-star-twinkle，这里沿用同一做法。
+   纯装饰（aria-hidden），所以不参与对比度要求，但颜色仍取令牌。 */
+@keyframes tpTwinkle {
+  0%, 100% { opacity: .35; transform: scale(.82); }
+  50%      { opacity: 1;   transform: scale(1.12); }
+}
+.tpStar {
+  display: inline-block; margin: 0 3px; vertical-align: .1em;
+  font-size: 12px; line-height: 1; color: var(--y-text);
+  animation: tpTwinkle 3.6s ease-in-out infinite;
+  animation-delay: var(--twd, 0s);
+}
+
+/* ---- 截图网格 ----
+   6 张：桌面 3 列 2 行（320 的下限把 1240 栏压到 3 列，5+1 那种断尾没有）
+   ⇒ 1024/768 两列，375 单列，全靠 auto-fill 塌陷，不用写断点。 */
+.tpShots {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px; margin: 14px 0 0; padding: 0; list-style: none;
+}
+.tpShot { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+/* ⚠️ 2026-10-11：`.tpShot__im` 从**程序化渐变的 `<span>`** 换成了**真的 `<img>`**（站里的 7 张 CG）。
+   `.thumb img { … }` 那条选择器**管不到它** —— 它自己就是 `.thumb`、不是 `.thumb` 的后代，
+   所以 `width / object-fit` 必须在这里写全，否则图会按原始尺寸铺出去把栅格撑坏。 */
+.tpShot__im { aspect-ratio: 16 / 10; width: 100%; object-fit: cover; }
+/* 能被看图窗唤醒的那一格（`viewer.js` 挂载时自动加的类）：
+   鼠标上是手型；键盘上是焦点环 —— 它多半是 `<li>` / `<img>` 这种**天生不可聚焦**的元素，
+   没有这一条，键盘用户就看不出这儿能点。 */
+.is-zoomable { cursor: pointer; }
+.is-zoomable:focus-visible { outline: 2px solid var(--y-text); outline-offset: 3px; border-radius: 10px; }
+.tpShot__cap {
+  display: flex; align-items: baseline; gap: 6px;
+  font-size: 12px; color: var(--ink-soft);
+}
+.tpShot__cap b { font-family: var(--font-mono); font-size: 12px; color: var(--y-text); }
+
+/* ---- 下载 / 汉化说明 ---- */
+.tpDl { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
+.tpDl__a {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 11px 14px; border: 1.5px solid var(--c500); border-radius: var(--r);
+  background: var(--surface); color: var(--link);
+  transition: background .18s var(--ease), border-color .18s var(--ease), transform .18s var(--ease);
+}
+.tpDl__a:hover { background: var(--c200); border-color: var(--c700); transform: translateY(-1px); }
+.tpDl__a .i { width: 16px; height: 16px; flex: none; }
+.tpDl__t { font-size: 14px; font-weight: 500; }
+.tpDl__n { margin-left: auto; font-size: 12px; color: var(--ink-soft); }
+.tpDl__warn { margin: 10px 0 0; font-size: 12px; color: var(--ink-faint); }
+
+/* ============ 角色表（精简卡列）============
+   ⚠️ 这里**没有立绘** —— 站里一张人形图形都没有（covers/ 那 38 张全是同心环 + 金十字 + 星点）。
+   硬造会违「从站内母题长出来」这条纪律，所以用**大号首字色块圆盘**（`.av` 的配方，
+   全站表达「一个人」的既有方式），色相 = hueOf(角色名)，与全站作者头像同一条规则。 */
+.tpCast {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: 12px; margin: 14px 0 0; padding: 0; list-style: none;
+}
+.tpChar {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px;
+  padding: 12px 13px;
+  border: 1.5px solid var(--line-soft); border-radius: var(--r);
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  box-shadow: var(--shadow-sm);
+}
+.tpChar__av { width: 52px; height: 52px; font-size: 22px; }
+.tpChar__b { min-width: 0; }
+.tpChar__n { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin: 0; }
+.tpChar__n b { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--ink-deep); }
+.tpChar__k { font-size: 11.5px; color: var(--ink-soft); }
+.tpChar__m { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 5px 0 0; }
+/* 定位胶囊：复用 `.tag` 的形制（--th 色相 + --hue-* 三档令牌），只是文案不同 */
+.tpChar__role {
+  padding: 0 7px; border-radius: var(--r-pill);
+  font-size: 11.5px; line-height: 1.7;
+  border: 1px solid hsl(var(--th, 218) var(--hue-bd-s) var(--hue-bd-l));
+  background: hsl(var(--th, 218) var(--hue-bg-s) var(--hue-bg-l));
+  color: hsl(var(--th, 218) var(--hue-fg-s) var(--hue-fg-l));
+}
+.tpChar__cv { font-size: 12px; color: var(--ink-soft); }
+.tpChar__line { margin: 6px 0 0; font-size: 12.5px; line-height: 1.7; color: var(--ink); }
+
+/* ============ 回复区 ============ */
+.tpRep__count { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+.tpRlist {
+  margin: 0; padding: 0; list-style: none;
+  border: 1.5px solid var(--line-soft); border-radius: var(--r);
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  box-shadow: var(--shadow-sm);
+}
+.tpR {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px;
+  padding: 14px 16px; border-bottom: 1px dashed var(--line-soft);
+}
+.tpR:last-child { border-bottom: 0; }
+.tpR--op { background: var(--c100); }
+.tpR__av { width: 34px; height: 34px; font-size: 14px; }
+.tpR__b { min-width: 0; }
+.tpR__h { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin: 0; font-size: 12px; }
+.tpR__h .by { font-size: 13px; }
+.tpR__op {
+  padding: 0 6px; border-radius: var(--r-pill);
+  font-size: 12px; line-height: 1.7; font-weight: 500;
+  color: #fff; background: var(--deep-grad);
+}
+/* 「我」用色相派生令牌（不能拿 --y500 + --y-ink：暗色下前者不变浅金、
+   后者翻成浅金，两枚撞成 1.0:1 的隐形字） */
+.tpR__op--me {
+  background: hsl(44 var(--hue-bg-s) var(--hue-bg-l));
+  color: hsl(44 var(--hue-fg-s) var(--hue-fg-l));
+  border: 1px solid hsl(44 var(--hue-bd-s) var(--hue-bd-l));
+}
+.tpR__f { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); }
+.tpR__t { margin-left: auto; font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); }
+.tpR__x { margin: 5px 0 0; font-size: 14px; line-height: 1.7; color: var(--ink); overflow-wrap: anywhere; }
+
+/* ---- 回复框 ---- */
+.tpForm {
+  margin-top: 18px; padding: 14px 16px 16px;
+  border: 1.5px solid var(--c500); border-radius: var(--r);
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  box-shadow: var(--glow);
+}
+.tpForm__cap { margin: 0 0 8px; font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--ink-deep); }
+.tpForm__box {
+  display: block; width: 100%; min-height: 96px; resize: vertical;
+  padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--r-sm);
+  background: var(--surface); color: var(--ink);
+  font: inherit; font-size: 14px; line-height: 1.7;
+  transition: border-color .18s var(--ease);
+}
+.tpForm__box:focus-visible { outline: 2px solid var(--c700); outline-offset: 1px; border-color: var(--c700); }
+.tpForm__foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.tpForm__hint { font-size: 12px; color: var(--ink-soft); }
+.tpForm__foot .btn { margin-left: auto; }
+
+/* ============ 提示条 ============ */
+/* ============ 面包屑末项截断 ============ */
+.tp__crumbCur {
+  display: inline-block; vertical-align: bottom;
+  max-width: min(34ch, 54cqw);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ============ 空态 ============ */
+.tpEmpty__acts { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+/* ============ 响应式 ============
+   基础规则必须全部写在这一段之前 —— 同特异性下后写的胜出，
+   把基础规则追加到文件末尾会盖掉这里的覆盖。 */
+@media (max-width: 900px) {
+  .tpInfo { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .tp__head { padding-top: 50px; }
+  .tp__banner { padding: 12px 14px 12px 16px; }
+  .tpCast { grid-template-columns: minmax(0, 1fr); }
+  .tpMeta { gap: 10px 14px; padding: 11px 13px; }
+  .tpAct { margin-left: 0; width: 100%; }
+  .tpAct__b { width: 100%; justify-content: center; }
+  .tpAct__m { left: 0; right: auto; }
+  .tpShots { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .tpR { grid-template-columns: 28px minmax(0, 1fr); gap: 9px; padding: 12px 12px; }
+  .tpR__av { width: 28px; height: 28px; font-size: 12px; }
+  .tpInfo { padding: 4px 12px 8px; }
+  .tpInfo__r { grid-template-columns: 4.8em minmax(0, 1fr); gap: 8px; }
+  .tpProse { font-size: 15px; line-height: 1.85; text-align: left; }
+  .tpForm__foot .btn { margin-left: 0; width: 100%; justify-content: center; }
+}
+@media (max-width: 420px) {
+  .tpChap__x { display: none; }
+  .tp__crumbCur { max-width: 42cqw; }
+}
+
+/* ============ 动效克制 ============ */
+@media (prefers-reduced-motion: reduce) {
+  /* 与 forum.css 同一处理：过渡整个关掉，切主题后立刻取样式得到的就是终值 */
+  *, *::before, *::after { transition: none !important; }
+  /* 弧的入场动画也要停 —— 否则 RM 下弧会长出来，而板块页那条是直接显形的 */
+  .tpStar { animation: none; opacity: 1; transform: none; }
+  /* 帖子页大轨道 clip-path 进场：RM 下直接撤掉裁剪（只锁 .orbit--head，别碰格子条小弧） */
+  .js .orbit--head .orbit__line { clip-path: none !important; }
+  .js .orbit--head .orbit__spark { opacity: 1 !important; }
+  /* 阅读进度是**跟着手走**的，不算「自己动」，RM 下保留。
+     但 style.css 的 RM 兜底是 `animation-duration: .01ms !important`，会把滚动驱动的时长钉死，
+     所以这里显式还原成 auto（= 铺满整条滚动时间线）。 */
+  .prog i, .prog b { animation-duration: auto !important; }
+  .tpChap__chev, .tpAct__chev { transform: none !important; }
+  .tpDl__a:hover { transform: none; }
+}
+
+/* ============ 评分 / 短评（第 32 轮）============
+   用户要的是 galbase 那种评分板块（参考 galbase.top/topic/507）：
+   **评分图标 · 平均分线 · 短评 · 可操控自己的评分**。
+   站内化：星点（圆点）＝评分图标（站点 `.orbit` 上钉的就是圆点，不是四角星芒）；
+   柱状图 + 平均线；柱高走 **0–10 的真实刻度**（**不截轴** —— 截了会把差距夸大，是骗人的）。
+   颜色仍然只承担一件事：**金 = 最好那一档**（与首页「热门 TAG」第 1 名换金同一条）。 */
+.tpRate { margin-top: 14px; }
+
+/* —— 顶部：大平均分 + 柱状图（**满宽**）——
+   ⚠️ 柱**必须细**。galbase 实测：`.bar-wrapper { width: 36px; flex-shrink: 0 }` + `.chart { gap: 30px }`
+      —— 柱是**固定宽、不伸缩**的，多出来的宽度全给间距。
+   上一版我写的是 `flex: 1 1 0` + `gap: 2px` ⇒ 13 条评分在 1100px 里摊成 83px 一根、彼此几乎贴着，
+   整条糊成**一块实心色块**（用户判词：「柱状图太粗了」）。
+   ⇒ 现在柱子固定 10px、`justify-content: space-between` 把余宽全分给间距：
+     柱少时疏朗、柱多时自动收紧，两头都不会再糊成一块。 */
+.tpRate__top { display: grid; grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto; gap: 2px 18px; align-items: center; }
+.tpRate__avg { grid-row: 1 / span 2; margin: 0; display: flex; align-items: baseline; gap: 3px; }
+.tpRate__avg b { font-family: var(--font-display); font-size: 40px; line-height: 1; color: var(--ink-deep);
+  font-variant-numeric: tabular-nums; }
+.tpRate__avg i { font-style: normal; font-size: 12px; color: var(--ink-soft); }
+.tpRate__avg span { margin-left: 8px; font-size: 12px; color: var(--ink-soft); }
+.tpRate__chart { position: relative; display: flex; align-items: flex-end;
+  justify-content: space-between; gap: 30px; height: 72px;
+  /* ⚠️ 柱多到放不下时**横向滚动 + 可拖**（用户：「评分数据很多呢，树状图能不能拖动呢？
+     galbase 那个树状图是可以拖动的」）。
+     galbase 实测：`.chart-container { overflow-x: auto; cursor: grab; user-select: none }`
+     + `.chart-container:active { cursor: grabbing }`。
+     柱少时 `space-between` 把余宽全分给间距（不留右侧死白）；柱多时溢出、滚起来。 */
+  overflow-x: auto; overflow-y: hidden; cursor: grab; user-select: none;
+  scrollbar-width: thin; }
+.tpRate__chart:active { cursor: grabbing; }
+/* 柱 = **光柱**（用户：「柱状图是不是可以做天文元素处理？」）。
+   读法：**每次评分 = 一道观测到的光，亮多少＝打了多少分**。
+   ⚠️ 柱体「由下往上变亮」⇒ 它是一道**光**，不是一根实心柱。
+   ⚠️⚠️ **柱顶不许再钉一颗星**：第一版我贴了，用户判词「我说星星你就全部上星星，
+      有你这样糊弄我的啊」—— §2.162 在同一块里的第四次。星形只留给评分控件**一处**。 */
+.tpRate__chart i { position: relative; flex: 0 0 14px; height: calc(var(--v, 0) * 100%); }
+.tpRate__chart .tpRate__beam {
+  position: absolute; inset: 0; border-radius: 7px 7px 0 0;
+  background: linear-gradient(180deg,
+    hsl(var(--hue) var(--hue-fg-s) var(--hue-fg-l) / .92) 0%,
+    hsl(var(--hue) var(--hue-fg-s) var(--hue-fg-l) / .04) 100%);
+}
+.tpRate__line { position: absolute; left: 0; right: 0; bottom: calc(var(--a, 0) * 100%);
+  border-top: 1.5px dashed var(--y-text); }
+.tpRate__line b { position: absolute; right: 0; top: -9px; padding: 0 4px; background: var(--surface);
+  font-family: var(--font-mono); font-size: 11px; color: var(--y-text); }
+.tpRate__cap { grid-column: 2; margin: 0; font-size: 11.5px; color: var(--ink-faint); }
+
+/* —— 左右两栏：左「历史简评」｜右「我的评分」——
+   这是用户点名的那条：「评分系统的右侧留白那么多干什么？你做左右设计不好吗」。
+   上一版两件都竖着占满整宽 ⇒ 「我的评分」那一行右边空掉六百多像素。
+   galbase 的 `#rate main` 也是横排（`#slider` / `#user_rate` / `#self_rate` = 2 / 2 / 1）。
+   ⚠️ **两栏必须等高**（用户 2026-10-11 追问：「你为什么不做左右的高度对齐呢？」）——
+      所以这里是 `align-items: stretch`（不是 `start`）：行高取两栏里的高者，
+      矮的那一栏被拉到齐平；`.tpRate__me` 内部再用 `margin-top:auto` 把提示文案推到卡底，
+      撑出来的空间因此落在表单与提示之间，而不是留成卡底一块死白。 */
+.tpRate__cols { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(340px, 1fr);
+  gap: 16px; align-items: stretch; margin-top: 14px; }
+
+.tpRate__k { display: flex; align-items: baseline; gap: 12px; margin: 0 0 9px;
+  font-size: 12px; color: var(--ink-soft); }
+.tpRate__hintn { font-size: 11px; color: var(--ink-faint); }
+
+/* —— 右栏：我的评分 —— */
+/* ⚠️ flex 列 + 提示 `margin-top:auto`：两栏等高之后，多出来的高度全部落在
+   「提交键」与「本站没有后端…」之间，卡不会在底部留一块死白（见 `.tpRate__cols` 的注释）。 */
+.tpRate__me { display: flex; flex-direction: column;
+  padding: 13px 15px; border: 1.5px solid var(--line-soft); border-radius: var(--r);
+  background: linear-gradient(180deg, var(--surface), var(--c100)); box-shadow: var(--shadow-sm); }
+/* 评分控件 = 十颗**星**（用户：「评分的圆圈是不是也可以换成星星之类的？」）。
+   形状同样走**站里自己的四角星芒**，不装 ★ 那种通用五角星。
+   ⚠️ 星形用 `clip-path` 画在**内层 span** 上，`button` 本体**不裁** ——
+      `clip-path` 会把 `outline` 一起裁掉，焦点环就没了（可访问性不能丢）。
+   点亮的星用**板块色相**（与光柱同色）；金色仍然只留给「推荐」那一档。 */
+.tpRate__dots { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tpRate__dot { display: grid; place-items: center; width: 26px; height: 26px; padding: 0;
+  border: 0; background: none; cursor: pointer; transition: transform .14s var(--ease); }
+.tpRate__dot:hover { transform: translateY(-2px) scale(1.08); }
+.tpRate__dot:focus-visible { outline: 2px solid var(--y-text); outline-offset: 1px; border-radius: 5px; }
+.tpRate__star {
+  width: 20px; height: 20px; background: var(--line);
+  clip-path: polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%);
+  transition: background .14s var(--ease), transform .14s var(--ease);
+}
+.tpRate__dot.is-on .tpRate__star {
+  background: hsl(var(--hue) var(--hue-fg-s) var(--hue-fg-l)); transform: scale(1.1);
+}
+.tpRate__mine { margin-left: 8px; font-family: var(--font-mono); font-size: 12.5px; color: var(--ink); }
+/* 竖排：右栏窄，横排会把输入框挤成一条线 */
+.tpRate__fields { display: flex; flex-direction: column; gap: 8px; margin-top: 13px; }
+.tpRate__f { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ink-soft); }
+.tpRate__in { flex: 1 1 auto; min-width: 0; padding: 7px 10px; font: inherit; font-size: 12.5px;
+  color: var(--ink); background: var(--surface);
+  border: 1.5px solid var(--line); border-radius: var(--r-sm); }
+.tpRate__sel { padding: 7px 9px; font: inherit; font-size: 12.5px; color: var(--ink);
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r-sm); }
+.tpRate__acts { display: flex; align-items: center; gap: 9px; margin-top: 12px; margin-bottom: 11px; }
+.tpRate__sub { padding: 8px 16px; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 500;
+  color: var(--link); background: var(--surface);
+  border: 1.5px solid var(--c500); border-radius: var(--r-pill);
+  transition: background .16s var(--ease), border-color .16s var(--ease); }
+.tpRate__sub:hover { background: var(--c200); border-color: var(--c700); }
+.tpRate__sub:focus-visible { outline: 2px solid var(--y-text); outline-offset: 2px; }
+.tpRate__del { padding: 8px 13px; cursor: pointer; font: inherit; font-size: 12px;
+  color: var(--ink-soft); background: none; border: 1.5px dashed var(--line); border-radius: var(--r-pill); }
+.tpRate__del:hover { color: var(--ink); border-color: var(--ink-soft); }
+.tpRate__del[hidden] { display: none; }
+.tpRate__warn { margin: auto 0 0; font-size: 11.5px; color: var(--ink-faint); }
+
+/* —— 左栏：历史简评 —— **一行一条**（用户：「我让你别留白那么多……压缩左侧简评啊」）
+   上一版是**两行**：第一行放 头像/名字/分数/状态/时间，第二行才放正文。
+   而正文只有一句二十来字，第二行右边整片空着 —— 那就是用户看到的留白。
+   ⇒ 现在全部并进**同一行**：头像 / 名字 / 分数 / 状态 / 正文 / 时间，
+     正文 `flex: 1` 吃掉余宽（**留白被正文吸收**），过长时省略号截断、全文挂 `title`。
+   ⚠️ 列表 `flex: 1` 撑满整栏，栏高与右栏对齐（`.tpRate__cols` 的 `stretch`）；
+      行数多到撑破时**列表自己滚**，不去顶高整行（行高上限见 `.tpRate__cols`）。 */
+/* ⚠️⚠️ **等高以「右栏」为准**（用户 2026-10-11 澄清：「我让你左右等高，意思是以右边为 max，
+   因为右边不可能留白那么多啊，左边肯定要多的话就直接滚动啊」）。
+   上一版我只是把两边拉平 —— 结果是**右栏被左栏撑高**，卡底多出一大块死白，正好是用户不要的。
+   正解：**右栏出多高就是多高**，左栏跟着它、多的**自己滚**。
+   做法是 `.tpRate__hist { contain: size }` —— 尺寸包含让这一栏**不参与行高的撑开**
+   （按「没有内容」来算尺寸），于是 `auto` 行高由**右栏**决定；
+   左栏再靠 `stretch` 拿到同样的高度，里面列表 `flex:1 + overflow-y:auto` 去滚。 */
+.tpRate__hist { display: flex; flex-direction: column; min-width: 0; min-height: 0; contain: size; }
+.tpRate__hist .tpRate__k { flex: none; }
+.tpRate__list { margin: 0; padding: 0; list-style: none; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.tpRate__c { display: flex; align-items: center; gap: 9px; padding: 7px 2px;
+  border-bottom: 1px dashed var(--line-soft); font-size: 11.5px; }
+.tpRate__c:last-child { border-bottom: 0; }
+.tpRate__c--me { padding-inline: 9px; border-radius: var(--r-sm);
+  background: linear-gradient(90deg, var(--c100), transparent 70%); }
+.tpRate__av { width: 22px; height: 22px; font-size: 10.5px; flex: none; }
+/* ⚠️ 名字 / 分数 / 状态都要 `nowrap` —— 少了它，窄屏下这三个会各自**内部折行**，
+   行高从 37px 涨到 55px（实测），「一行一条」当场破功。宽度由 `.tpRate__x` 让。 */
+.tpRate__c .by { font-size: 12px; white-space: nowrap; }
+.tpRate__sc { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--ink); white-space: nowrap; }
+.tpRate__sc b { font-size: 12.5px; color: var(--ink-deep); }
+.tpRate__st { font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
+.tpRate__st[data-st="推荐"] { color: var(--y-text); }
+.tpRate__t { flex: none; font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
+.tpRate__x { flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 窄屏：两栏落成一列（右栏的 340px 下限在窄屏放不下），行高上限也要撤掉 */
+@media (max-width: 900px) {
+  .tpRate__cols { grid-template-columns: minmax(0, 1fr); max-height: none; }
+}
+@media (max-width: 640px) {
+  .tpRate__top { grid-template-columns: minmax(0, 1fr); }
+  .tpRate__avg { grid-row: auto; }
+  .tpRate__cap { grid-column: 1; }
+  .tpRate__in { width: 100%; }
+}

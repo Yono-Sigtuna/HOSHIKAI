@@ -1,0 +1,499 @@
+/* 星海社 · 板块浏览页
+   只补首页没有的东西：面包屑 / 板块头（更大的逐字标题）/ 工具栏 / 卡片与列表两套排版 /
+   分页 / 空态。颜色一律取 style.css 的令牌，本文件不出现任何颜色字面量
+   （唯一的写死白色在深色语境：视图切换的选中态与「最新」徽章，白字压 --deep-grad）。 */
+
+/* ============ 面包屑 ============
+   ⚠️ 整条面包屑**裸在页面底上**（.crumb → main.wrap → body 全透明，没有卡面），
+   所以这里一律不能用 --ink-soft / --ink-faint —— --bg-veil 压到 .75 之后
+   （照片透出量翻倍）它们只剩 3.54:1 与 2.82:1。改用 --ink（实测 6.05:1）。
+   分隔符是纯装饰的 ›，本来想留一档弱色，但试了两档都不行：--ink-soft 3.54:1、
+   --ink 再叠 62% 透明度只有 2.94:1。所以一并拉到 --ink，靠间距区分层级 ——
+   不为了「好看一点」留一个低于 4.5 的数。 */
+.crumb {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 18px; font-size: 13px; color: var(--ink);
+  /* 面包屑路径展开动画（P2.13） */
+  animation: crumb-reveal .52s var(--ease) both;
+}
+.crumb a { color: var(--ink); }
+.crumb a:hover { color: var(--link-page); text-decoration: underline; text-underline-offset: 3px; }
+.crumb__sep { color: var(--ink); }
+.crumb__cur { color: var(--ink); font-weight: 500; }
+
+@keyframes crumb-reveal {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crumb { animation: none; }
+}
+
+/* ============ 板块头 ============
+   结构复用首页的 .bv__head / .bv__lead / .bv__idx / .bv__sub / .bv__quote。
+   子板块名现在是一条格子条（.fs，见 style.css），逐字 span 那套已随之删掉。
+   弧线用本页已有的 ARC_HEAD（v2p 自己的二次贝塞尔拱），格子条不再自画一条。 */
+
+/* ============ 工具栏 ============ */
+.bd__bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 26px; padding-bottom: 14px;
+  border-bottom: 1.5px solid var(--line-soft);
+}
+/* 板块不存在时整条工具栏收起。[hidden] 会被 display:flex 盖掉，得显式兜一次 */
+.bd__bar[hidden] { display: none; }
+
+.seg {
+  display: inline-flex; align-items: center; gap: 2px; padding: 3px;
+  border: 1.5px solid var(--line); border-radius: var(--r-pill); background: var(--surface);
+}
+.seg__b {
+  display: inline-flex; align-items: center; height: 30px; padding: 0 15px;
+  border: 0; border-radius: var(--r-pill); background: none; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 500; color: var(--ink-soft);
+  transition: color .18s var(--ease), background .18s var(--ease), transform .18s var(--ease);
+}
+.seg__b:hover { color: var(--link); background: var(--c200); }
+.seg__b:active { transform: scale(0.96); }
+.seg__b[aria-pressed="true"] {
+  color: #fff; background: var(--deep-grad);
+  box-shadow: 0 2px 8px rgba(30, 63, 192, .25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg__b { transition: none; }
+  .seg__b:active { transform: none; }
+}
+
+.bd__sort { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-soft); }
+.sel { position: relative; display: inline-flex; align-items: center; }
+.sel select {
+  appearance: none; -webkit-appearance: none;
+  height: 36px; padding: 0 30px 0 13px; cursor: pointer;
+  border: 1.5px solid var(--line); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink); font: inherit; font-size: 13px;
+  transition: border-color .18s var(--ease);
+}
+.sel select:hover { border-color: var(--c600); }
+.sel__arrow {
+  position: absolute; right: 11px; width: 13px; height: 13px;
+  color: var(--ink-soft); pointer-events: none;
+}
+
+.bd__count { margin-left: auto; font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); }
+.bd__new { flex: none; }
+
+/* ============ 卡片视图 ============
+   轨道一律 minmax(0, 1fr)：裸 1fr 会被 nowrap 的长标题撑到 min-content，把整页顶宽。 */
+.tgrid {
+  /* 海报墙：auto-fill + minmax，1240 下正好 5 列（每张 ≈235px），
+     窄屏自动塌成 4/3/2/1 列，不用写一堆断点。 */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
+  gap: 18px 14px;
+}
+.tc { display: flex; min-width: 0; }
+.tc__link {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  border: 1.5px solid var(--line-soft); border-radius: var(--r);
+  overflow: hidden;                     /* 封面出血到卡片边缘，圆角由卡片裁 */
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  box-shadow: var(--shadow-sm);
+  transition: transform .18s var(--ease), border-color .18s var(--ease), box-shadow .22s var(--ease);
+}
+.tc__link:hover { transform: translateY(-2px); border-color: var(--c600); box-shadow: var(--glow); }
+/* 本地发的帖（存在本机，详情页里没有它）：卡片**不给链接**，所以 hover 也不该抬升、不该变色。
+   规则全部挂在 `.tc--local` / `.tl--local` 下 —— 这两个类只有本地帖才有，碰不到任何既有卡片。 */
+.tc--local .tc__link, .tl--local .tl__link { cursor: default; }
+.tc--local .tc__link:hover, .tl--local .tl__link:hover {
+  transform: none; border-color: var(--line-soft); box-shadow: var(--shadow-sm);
+}
+.tc--local .tc__link:hover .tc__t, .tl--local .tl__link:hover .tl__t { color: var(--ink-deep); }
+
+/* 竖版海报封面 4:5。角标（类型 / 热 / 星等）压在封面上，
+   正文区就只剩「标题 + 一行元信息」，235px 宽也放得下。 */
+.tc__cover { position: relative; display: block; }
+.tc__thumb { aspect-ratio: 4 / 5; border-radius: 0; }
+.tc__chips { position: absolute; top: 8px; left: 8px; display: flex; gap: 5px; }
+.tc__mag { position: absolute; right: 8px; bottom: 8px; }
+/* 压封面上的星等：深色胶囊 + 浅金数字，封面深浅都能看清 */
+.tc__mag .mag {
+  background: rgba(8, 14, 40, .55); border-color: rgba(255, 255, 255, .3); color: #fff;
+  backdrop-filter: blur(3px);
+}
+.tc__mag .mag b { color: var(--y400); }
+
+.tc__t {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  min-height: 2.9em;                    /* 两行高度，标题只有一行时卡片也不会高低不齐 */
+  margin: 0; padding: 10px 11px 0;
+  font-size: 13.5px; font-weight: 600; line-height: 1.45; color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.tc__link:hover .tc__t { color: var(--hot-link); }
+
+.tc__foot {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  margin-top: auto; padding: 9px 11px 11px;
+  font-size: 12px; color: var(--ink-soft);
+}
+.tc__by {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--by); font-weight: 500;
+}
+.tc__date { font-family: var(--font-mono); color: var(--ink-faint); white-space: nowrap; }
+.tc__foot .pull { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; font-family: var(--font-mono); }
+.tc__foot .pull .i { width: 12px; height: 12px; }
+
+/* 首字色块头像 .av / .av--sm 第 18 轮挪去 style.css 了 ——
+   顶栏的登录态（session.js）也要用它，而 index.html 不加载本文件。
+   写在本文件里会导致「板块页有头像、首页顶栏没有」。 */
+
+/* ============ 列表视图 ============ */
+/* style.css 只重置了 ul；这两个是 ol，编号与左内边距得自己清掉 */
+.tlist { display: flex; flex-direction: column; gap: 10px; margin: 18px 0 0; padding: 0; list-style: none; }
+.tl { min-width: 0; }
+.tl__link {
+  display: grid; grid-template-columns: 104px minmax(0, 1fr);
+  gap: 14px; align-items: center; min-width: 0;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line-soft); border-radius: var(--r);
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+  transition: transform .18s var(--ease), border-color .18s var(--ease), box-shadow .22s var(--ease);
+}
+.tl__link:hover { transform: translateY(-2px); border-color: var(--c600); box-shadow: var(--glow); }
+.tl__thumb { aspect-ratio: 4 / 3; }
+/* 首条突出：更大的图 + 板块色描边 + 「最新」标记 */
+.tl--lead .tl__link { grid-template-columns: 132px minmax(0, 1fr); border-color: var(--c500); box-shadow: var(--glow); }
+.tl--lead .tl__t { font-size: 17px; }
+.tl--lead .tl__thumb { aspect-ratio: 16 / 10; }
+.tl__new {
+  flex: none; padding: 1px 8px; border-radius: var(--r-pill);
+  font-size: 12px; font-weight: 500; color: #fff; background: var(--deep-grad);
+}
+
+.tl__body { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.tl__head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tl__t {
+  flex: 1; min-width: 0; display: block;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: 15px; font-weight: 600; color: var(--ink);
+}
+.tl__link:hover .tl__t { color: var(--hot-link); }
+.tl__x {
+  display: block; min-width: 0;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: 13px; color: var(--ink-soft);
+}
+.tl__m {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0;
+  font-size: 12px; color: var(--ink-faint);
+}
+.tl__m .by { color: var(--by); font-weight: 500; }
+.tl__m i { font-style: normal; opacity: .6; }
+.tl__m .pull { display: inline-flex; align-items: center; gap: 3px; font-family: var(--font-mono); }
+.tl__m .pull .i { width: 12px; height: 12px; }
+.tl__time { font-family: var(--font-mono); }
+
+/* ============ 空态 ============ */
+.empty {
+  margin-top: 18px; padding: 52px 20px; text-align: center;
+  border: 1.5px dashed var(--line); border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--surface), var(--c100));
+}
+.empty__mark { display: inline-flex; color: var(--c600); }
+.empty__mark .i { width: 34px; height: 34px; }
+.empty__t { margin: 12px 0 0; font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--ink-deep); }
+.empty__d { margin: 6px 0 18px; font-size: 13px; color: var(--ink-soft); }
+
+/* ============ 分页 ============ */
+.pg { margin-top: 30px; }
+.pg__row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pg__step {
+  display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 13px;
+  border: 1.5px solid var(--c500); border-radius: var(--r-pill); background: var(--surface);
+  color: var(--link); font-size: 13px; font-weight: 500; white-space: nowrap;
+  transition: background .18s var(--ease), border-color .18s var(--ease);
+}
+.pg__step:hover { background: var(--c200); border-color: var(--c700); }
+.pg__step.is-off { color: var(--ink-faint); border-color: var(--line-soft); cursor: not-allowed; }
+.pg__step.is-off:hover { background: var(--surface); border-color: var(--line-soft); }
+.pg__chev { width: 13px; height: 13px; transform: rotate(90deg); }
+.pg__step--next .pg__chev { transform: rotate(-90deg); }
+
+.pg__list { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
+.pg__n {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 34px; height: 34px; padding: 0 9px;
+  border: 1.5px solid var(--line-soft); border-radius: 10px; background: var(--surface);
+  font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft);
+  transition: border-color .18s var(--ease), color .18s var(--ease), background .18s var(--ease);
+}
+.pg__n:hover { border-color: var(--c600); color: var(--link); }
+.pg__n[aria-current="page"] { color: #fff; background: var(--deep-grad); border-color: transparent; font-weight: 700; }
+.pg__gap { padding: 0 2px; font-size: 13px; color: var(--ink-faint); }
+
+.pg__jump { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-left: auto; font-size: 12px; color: var(--ink-soft); }
+.pg__jump input {
+  width: 62px; height: 34px; padding: 0 8px; text-align: center;
+  border: 1.5px solid var(--line); border-radius: 10px; background: var(--surface);
+  color: var(--ink); font: inherit; font-family: var(--font-mono); font-size: 13px;
+}
+.pg__jump input:focus-visible { border-color: var(--c700); }
+/* 数字输入框的上下箭头会把 62px 挤变形，直接去掉 */
+.pg__jump input { -moz-appearance: textfield; }
+.pg__jump input::-webkit-outer-spin-button,
+.pg__jump input::-webkit-inner-spin-button { appearance: none; -webkit-appearance: none; margin: 0; }
+.pg__of { font-family: var(--font-mono); white-space: nowrap; }
+.pg__go {
+  height: 34px; padding: 0 13px; cursor: pointer;
+  border: 1.5px solid var(--c500); border-radius: var(--r-pill); background: var(--surface);
+  color: var(--link); font: inherit; font-size: 13px; font-weight: 500;
+  transition: background .18s var(--ease);
+}
+.pg__go:hover { background: var(--c200); }
+
+/* ============ 页脚 ============
+   style.css 的 .footer 底色是写死的 rgba(255,255,255,.8)：亮色下没毛病，
+   暗色下却是一块压在深底上的白斑（实测 computed 就是 0.8 白）。
+   这里在本页把它换成令牌里的玻璃底（与顶栏同一枚），亮色几乎无差别、暗色自动跟随。
+   ⚠️ 2026-11-07：页脚顶部加了「入夜带」之后，这条**不能**再写成整块平涂 ——
+      平涂会在页脚第一条像素上盖出一层 72% 的玻璃底，硬边又回来了（只是从 2px 线换成亮度台阶）。
+      改成和 style.css 同一条渐变：顶端透明、`--dawn` 处落定。只覆盖本页，首页一行不动。 */
+.footer { background: linear-gradient(180deg, transparent 0, var(--topbar-bg) var(--dawn, 240px)); }
+
+/* ============ 响应式（基础规则必须全部写在 /* 子板块切换：沿用色相令牌，所以亮/暗两套主题都自动正确 */
+.subtabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.subtabs__t {
+  padding: 6px 14px; border-radius: var(--r-pill); font-size: 13px;
+  color: var(--ink-soft); background: var(--surface);
+  border: 1.5px solid var(--line-soft);
+  transition: color .16s var(--ease), border-color .16s var(--ease), background .16s var(--ease);
+}
+.subtabs__t:hover { color: var(--link); border-color: var(--c600); }
+/* 当前子板块前那颗点亮的星 —— 一小处创意，不加结构 */
+.subtabs__t .i { width: 12px; height: 12px; fill: currentColor; stroke: none; margin-right: 5px; vertical-align: -1px; }
+.subtabs__t.is-on {
+  font-weight: 500;
+  color: hsl(var(--hue, 218) var(--hue-fg-s) var(--hue-fg-l));
+  border-color: hsl(var(--hue, 218) var(--hue-bd-s) var(--hue-bd-l));
+  background: hsl(var(--hue, 218) var(--hue-bg-s) var(--hue-bg-l));
+}
+
+/* ============ 天文系统 ============
+   四个要素做成一套轨道，不做四份装饰：
+     ① 标题弧（主线）—— 海报墙上方那条（辅线）更淡更细，读起来是同一条轨道的延伸
+     ② 星点对齐列中心，列数由 auto-fill 决定 ⇒ 窄屏塌成 2 列时星点自然变 2 个
+     ③ 海报沿列序依次点亮（一次性，不循环）
+     ④ 星等只闪那颗星形，不闪整张卡 —— 20 张卡一起呼吸会变成噪音
+   全在 reduced-motion 下关闭。 */
+.tgridwrap { position: relative; margin-top: 46px; }
+.tgrid { margin-top: 0; }
+
+.orbit {
+  position: absolute; left: 0; right: 0; height: 46px;
+  pointer-events: none; overflow: visible;
+  color: hsl(var(--hue, 218) 68% 60%);
+}
+.orbit--grid { top: -40px; height: 46px; opacity: .5; }
+.orbit__line { opacity: .7; }
+/* 大轨道虚线（同首页那条注记）：不做描边生长，见 style.css 的说明。
+   加载动画：clip 从左扫到右（不是 dashoffset 生长），像「绘制星轨」。 */
+.js .orbit--grid .orbit__line { stroke-dasharray: 2 5; stroke-dashoffset: 0 !important; transition: none;
+  clip-path: inset(0 100% 0 0); }
+.is-drawn .orbit--grid .orbit__line { clip-path: inset(0 0 0 0); transition: clip-path .9s var(--ease) .25s; }
+/* 小轨道（board.js 里的 .fs__arc）保持实线 + dashoffset 生长 */
+.js .orbit__line { stroke-dasharray: 1400; stroke-dashoffset: 1400; transition: stroke-dashoffset 1.3s var(--ease) .1s; }
+.is-drawn .orbit__line { stroke-dashoffset: 0; }
+.orbit__spark { color: hsl(var(--hue, 218) 76% 52%); }
+.js .orbit__spark { opacity: 0; transition: opacity .45s var(--ease); }
+.is-drawn .orbit__spark { opacity: 1; }
+.orbit__planet { color: hsl(var(--hue, 218) 80% 56%); }
+
+/* 海报沿列序依次点亮：--i 改为 --dl（row/col 错峰，由 board.js 计算） */
+.js .tgrid .tc { opacity: 0; }
+.js .tgrid.is-lit .tc {
+  animation: tcIgnite .46s var(--ease) both;
+  animation-delay: var(--dl, 0s);
+}
+@keyframes tcIgnite {
+  from { opacity: 0; transform: translateY(10px) scale(.975); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 列表式同款「沿序号依次点亮」。之前只有卡片网格有 —— 切到列表是一条条「啪」地出现，
+   两种视图的手感不一致。这里故意**不做缩放**：列表一行里没有缩放的视觉锚点，
+   跟着缩放会显得整行在晃，纯位移淡入更稳。--dl 由 board.js 顺序计算。 */
+.js .tlist > .tl { opacity: 0; }
+.js .tlist.is-lit > .tl {
+  animation: tlIn .42s var(--ease) both;
+  animation-delay: var(--dl, 0s);
+}
+@keyframes tlIn {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 星等星星各自缓慢闪烁：周期 5–9s、负延迟错相 ⇒ 一片星空，不是整齐闪灯 */
+@keyframes magTwinkle { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
+.js .tc__mag .mag .i,
+.js .tl .mag .i {
+  animation: magTwinkle var(--tw, 6.5s) ease-in-out infinite;
+  animation-delay: var(--twd, 0s);
+}
+
+/* ============ 断点（@media 之前）============ */
+@media (max-width: 900px) {
+  .tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tl--lead .tl__link { grid-template-columns: 116px minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .tl__link { grid-template-columns: 88px minmax(0, 1fr); gap: 11px; padding: 11px 12px; }
+  .tl--lead .tl__link { grid-template-columns: 100px minmax(0, 1fr); }
+  .tl__thumb, .tl--lead .tl__thumb { aspect-ratio: 4 / 3; }
+  .bd__count { margin-left: 0; }
+  .pg__jump { margin-left: 0; }
+}
+@media (max-width: 560px) {
+  .tgrid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 420px) {
+  .tl__link, .tl--lead .tl__link { grid-template-columns: 76px minmax(0, 1fr); }
+  .bd__sortCap { display: none; }
+}
+
+/* ============ 动效克制 ============ */
+@media (prefers-reduced-motion: reduce) {
+  /* style.css 只把「时长」压到 .01ms，过渡本身还在。运行时切主题时，
+     color / background-color / border-color 这些可动画属性会停在过渡的起始值上
+     —— 低帧率或快照式渲染（无头浏览器）下测得整页「半亮半暗」、甚至留下白块。
+     这里干脆把过渡整个关掉：这才是 prefers-reduced-motion 的本意，
+     也让「切主题后立刻取样式」得到的就是终值。 */
+  *, *::before, *::after { transition: none !important; }
+  .tc__link:hover, .tl__link:hover { transform: none; }
+}
+
+/* reduced-motion：显式关掉，不依赖 style.css 那条 animation-duration:.01ms 的全局兜底
+   —— 它不改 animationName，而且「无限循环 + 0.01ms 周期」会把闪烁冻在任意一帧
+   （星等可能卡在半暗）。这里直接把动画去掉并复位到终态。 */
+@media (prefers-reduced-motion: reduce) {
+  .js .tgrid .tc { opacity: 1 !important; animation: none !important; }
+  .js .tlist > .tl { opacity: 1 !important; animation: none !important; }
+  .tc__mag .mag .i, .tl .mag .i { opacity: 1; animation: none !important; }
+  .orbit__line { stroke-dashoffset: 0 !important; }
+  /* 板块页大轨道 clip-path 进场：RM 下直接撤掉裁剪 */
+  .js .orbit--grid .orbit__line { clip-path: none !important; }
+  .orbit__spark { opacity: 1 !important; }
+}
+
+/* ============ 版块头（2026-11-06 从 v3p 的 <header class="bh"> 搬来）============
+   左：区码 → **本站的格子条 + 望远镜**（标题）→ 副题；右：四个读数；背景压一只星盘。
+   与 v3p 的唯一差别：v3p 的 h1 是大字，这里保留 v2p 的 filmstrip。 */
+.bh { position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: 28px; align-items: end; margin-top: 26px; padding-bottom: 20px;
+  border-bottom: 1px solid var(--c400); }
+/* 底部那道色相短线：v3p 的 .bh::after 原样（给标题区一个落点） */
+.bh::after { content: ""; position: absolute; left: 0; bottom: -1px; width: 120px; height: 1.5px;
+  background: hsl(var(--hue, 218) 70% 58%); }
+.bh__lead, .bh__st { position: relative; z-index: 1; }
+
+/* 星盘：520px、压到 .3，只要纹理（v3p 的 .bh__dial） */
+.bhd { position: absolute; right: -140px; top: 50%; width: 520px; height: 520px; margin-top: -260px;
+  opacity: .3; pointer-events: none; color: var(--y-text); }
+/* v3p 是夜景，.3 够；浅色主题压在 CG 上会化掉 ⇒ 单列一档 */
+[data-theme="light"] .bhd { opacity: .62; }
+.bhd circle, .bhd ellipse { fill: none; stroke: currentColor; stroke-opacity: .32; }
+.bhd__o, .bhd__i { transform-box: view-box; transform-origin: 300px 300px; }
+.bhd__o { animation: dialSpin 240s linear infinite; }
+.bhd__i { animation: dialSpin 150s linear infinite reverse; }
+.bhd__t { stroke: currentColor; stroke-opacity: .5; }
+.bhd__h text { font: 500 14px var(--font-mono); fill: currentColor; fill-opacity: .7; text-anchor: middle; }
+.bhd__pt { fill: currentColor; }
+.bhd__ec { stroke-dasharray: 2 7; stroke-opacity: .55; }
+
+/* 星盘入场：从中心旋开 12° 并淡入 —— 像望远镜开机的第一转。
+   `.bh.is-drawn` 由 board.js 的 drawFs 在首帧/200ms 兜底加上（同一类也给格子条小弧描线）。
+   ⚠️ 终态 opacity 必须写死：浅色主题原本另有 .62 一档，这里用更高特异度覆盖。 */
+.js .bh .bhd { opacity: 0; transform: scale(.86) rotate(-12deg);
+  transition: opacity 1s var(--ease) .12s, transform 1.5s var(--ease) .12s; }
+.js .bh.is-drawn .bhd { opacity: .3; transform: none; }
+/* ⚠️ `data-theme` 和 `.js` 都挂在 <html> 上 —— 写成 `[data-theme] .js ...` 是要求
+   `.js` 当其后代，永远不匹配（2026-11-07 探针实测：浅色下星盘掉回 .3）。必须写成 html[...]。 */
+html[data-theme="light"] .bh.is-drawn .bhd { opacity: .62; }
+
+.bh__code { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 10px;
+  font: 500 12px/1 var(--font-mono); letter-spacing: .14em; color: var(--ink-soft); }
+.bh__code span:first-child { color: hsl(var(--hue, 218) 70% 40%); }
+/* ⚠️ 暗色下 40% 的亮度贴在 CG 上只剩一团影子（截图里 SECTOR 那行几乎看不见）⇒ 提到 78% */
+[data-theme="dark"] .bh__code span:first-child { color: hsl(var(--hue, 218) 76% 78%); }
+.bh__sub { margin: 12px 0 0; font-size: 14px; line-height: 1.7; color: var(--ink-soft); }
+.bh__st { margin: 0; display: grid; grid-template-columns: repeat(4, auto); }
+.bh__st div { padding: 4px 18px; border-left: 1px solid var(--c400); }
+.bh__st dt { font: 12px/1 var(--font-mono); letter-spacing: .12em; color: var(--ink-soft); }
+.bh__st dd { margin: 8px 0 0; font: 500 24px/1 var(--font-mono); color: var(--ink-deep); }
+.bh__st small { margin-left: 4px; font: 12px/1 var(--font-body); color: var(--ink-soft); }
+@media (max-width: 980px) {
+  .bh { grid-template-columns: minmax(0, 1fr); align-items: start; }
+  .bh__st div:first-child { padding-left: 0; border-left: 0; }
+  .bhd { right: -260px; opacity: .16; }
+  /* 入场终态要跟着断点走：上面那条 .bhd{opacity:.16} 只有 0,1,0，赢不过入场规则，
+     不补这条星盘在窄屏会回到 .3（浅色主题仍由更高特异度那条给 .62，与改动前一致） */
+  .js .bh.is-drawn .bhd { opacity: .16; }
+}
+@media (max-width: 560px) {
+  .bh__st { grid-template-columns: repeat(2, auto); gap: 12px 0; }
+  .bh__st div:nth-child(3) { padding-left: 0; border-left: 0; }
+}
+
+/* ============ 子板块条上方的轨道（v3p 的 .chapw 原样）============
+   星点对齐每个子板块的中心，当前那颗金色并发光；一颗小行星沿弧走 14s。 */
+/* 子板块条：版块头下方独立一行（v3p 的 .chap 位置），不带轨道。
+   ⚠️ 2026-11-06 用户：「版块切换放工具栏不好看」「把它上面的小轨道删了」。 */
+.chaprow { margin-top: 18px; }
+
+/* ============ 本区赫罗图（v3p 的 .hr 原样搬）============ */
+.hr { margin-top: 26px; padding: 16px 18px 10px; border: 1.5px solid var(--c400); border-radius: var(--r-lg);
+  background: linear-gradient(180deg, var(--surface), var(--c100)); box-shadow: var(--shadow-sm); }
+.hr__h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin-bottom: 8px; }
+.hr__h h2 { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 600;
+  letter-spacing: .08em; color: var(--ink-deep); }
+.hr__h p { margin: 0; font-size: 12px; color: var(--ink-soft); flex: 1; min-width: 240px; }
+.hr__plot { position: relative; }
+.hr__plot svg { display: block; }
+.hr__g line { stroke: var(--c400); }
+.hr__g text { font: 12px var(--font-mono); fill: var(--ink-soft); }
+.hr__warm { fill: color-mix(in srgb, var(--hud-gold-s) 8%, transparent); }
+.hr__d { fill: var(--c700); opacity: .22; transition: opacity .2s;
+  /* ⚠️ 这两行是进场动画的命根子：缺了它们，`scale: 0` 会绕 **SVG 的原点（左上角）** 缩放，
+     星点看起来是「从左上角飞出来」—— 2026-11-06 用户就是这样看出来的。 */
+  transform-box: fill-box; transform-origin: center; }
+.hr__d.is-on { opacity: .9; }
+.hr__d.is-warm { fill: var(--hud-gold-s); }
+.hr__d.is-hl { opacity: 1; stroke: var(--ink); stroke-width: 2; }
+.hr__d.is-on.is-warm { filter: drop-shadow(0 0 4px var(--hud-gold-s)); }
+.hr__scan { stroke: var(--hud-gold-s); stroke-width: 1.5; opacity: 0; }
+/* 进场：亮的星从「此刻」那一侧依次落下，扫描线从右扫到左（只播一次）。
+   ⚠️ 用 `.is-live` 把「藏起来」这一步锁在 JS 跑通之后 —— 否则 JS 挂了星点会永远藏着。 */
+.hr.is-live:not(.is-in) .hr__d { visibility: hidden; }
+.hr.is-in .hr__d { animation: hrDotIn .6s var(--ease) both; animation-delay: var(--dl, 0s); }
+.hr.is-in .hr__scan { animation: hrScan 1.5s var(--ease) 1; }
+@keyframes hrDotIn { from { scale: 0; } }
+@keyframes hrScan {
+  0%   { opacity: .9; translate: 0 0; }
+  90%  { opacity: .5; }
+  100% { opacity: 0; translate: calc(var(--sw) * -1) 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hr.is-live:not(.is-in) .hr__d { visibility: visible; }
+  .hr__scan { display: none; }
+  .bhd__o, .bhd__i, .chap__halo { animation: none !important; }
+  /* 星盘入场在 RM 下直接终态：初态 opacity:0 必须显式复位，否则整块星盘永久隐形 */
+  .js .bh .bhd { opacity: .3 !important; transform: none !important; transition: none !important; }
+  html[data-theme="light"] .bh .bhd { opacity: .62 !important; }
+}
+/* 窄屏 + RM：星盘本来就只有 .16，别被上面那条 !important 拉回 .3 */
+@media (prefers-reduced-motion: reduce) and (max-width: 980px) {
+  .js .bh .bhd { opacity: .16 !important; }
+}

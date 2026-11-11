@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>版规总则 · 星海社</title>
+<meta name="description" content="星海社版规总则：六章二十三条，含发帖、资源与版权、互动秩序、处罚阶梯与申诉流程。">
+<script>document.documentElement.classList.add('js')</script>
+<script>(function(){try{var t=localStorage.getItem('hoshikai:theme');if(t!=='dark'&&t!=='light'){t='light';}document.documentElement.dataset.theme=t;}catch(e){}})();</script>
+<script>window.addEventListener('error',function(e){window.__ERR=(window.__ERR||'')+(e.message||'?')+' @'+String(e.filename||'').split('/').pop()+':'+(e.lineno||0)+' | ';});</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8' fill='%234a72e8'/%3E%3Ccircle cx='19' cy='5' r='2.4' fill='%23dfbd65'/%3E%3C/svg%3E">
+<script>/* 开屏只在本次会话第一次进站播；之后首帧前直接跳过 */
+try{if(localStorage.getItem("hoshikai:boot")==="1")document.documentElement.classList.add("boot-skip")}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="./fonts/fonts.css">
+<link rel="stylesheet" id="fontCss" href="./fonts/fonts.css" media="print" onload="this.media='all'">
+<script src="./boot.js" defer></script>
+<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./docs.css">
+<link rel="stylesheet" href="./menu.css">
+</head>
+<body>
+
+<!-- 开屏：字体没到不进场（逻辑见 boot.js，样式见 style.css 的 .boot 段） -->
+<div class="boot" id="boot" role="status" aria-live="polite">
+  <div class="boot__box">
+    <svg class="boot__dial" viewBox="0 0 200 200" aria-hidden="true">
+      <circle class="boot__ring" cx="100" cy="100" r="78"/>
+      <circle class="boot__ring boot__ring--i" cx="100" cy="100" r="58"/>
+      <ellipse class="boot__ec" cx="100" cy="100" rx="86" ry="32" transform="rotate(-23 100 100)"/>
+      <circle class="boot__pl" r="5.5"/>
+    </svg>
+    <p class="boot__t">星海社<span>正在校准星盘</span></p>
+    <div class="boot__bar" aria-hidden="true"></div>
+    <p class="boot__s">载入星图字体…</p>
+  </div>
+</div>
+
+<div class="bg" aria-hidden="true">
+  <span class="bg__l" style="--i:0"></span>
+  <span class="bg__l" style="--i:1"></span>
+  <span class="bg__l" style="--i:2"></span>
+  <span class="bg__l" style="--i:3"></span>
+  <span class="bg__l" style="--i:4"></span>
+  <span class="bg__l" style="--i:5"></span>
+  <span class="bg__l" style="--i:6"></span>
+  <span class="bg__wash"></span>
+</div>
+<canvas id="sky" aria-hidden="true"></canvas>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-orbit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-stars4" viewBox="0 0 24 24"><g fill="currentColor">
+    <path d="M15.4 2.6c.5 3.6 2.1 5.2 5.7 5.7-3.6.5-5.2 2.1-5.7 5.7-.5-3.6-2.1-5.2-5.7-5.7 3.6-.5 5.2-2.1 5.7-5.7Z"/>
+    <path d="M6.1 10.9c.32 2.3 1.35 3.33 3.65 3.65-2.3.32-3.33 1.35-3.65 3.65-.32-2.3-1.35-3.33-3.65-3.65 2.3-.32 3.33-1.35 3.65-3.65Z"/>
+    <circle cx="18.6" cy="14.9" r="1.5"/><circle cx="7.2" cy="20.4" r="1.05"/></g></symbol>
+  <symbol id="i-telescope" viewBox="0 0 76 75"><g fill="currentColor">
+    <path d="M31 46 L15.5 72.5 L21 72.5 L33 48.5 Z"/><path d="M31 46 L46.5 72.5 L41 72.5 L29 48.5 Z"/>
+    <path d="M31 46 L29.4 72.5 L32.6 72.5 L33 48.5 Z"/>
+    <rect x="20.5" y="58" width="21" height="3" rx="1.5" transform="rotate(-4 31 59.5)"/>
+    <rect x="26" y="36" width="10" height="11.5" rx="1.8"/><rect x="24.5" y="31.5" width="13" height="5.4" rx="1.8"/>
+    <g transform="rotate(-31 31 32)"><rect x="10.5" y="27.4" width="45" height="9.4" rx="2"/>
+      <rect x="52.5" y="25.2" width="7.6" height="13.8" rx="1.6"/><rect x="4.6" y="29" width="6.2" height="6.2" rx="1.5"/>
+      <rect x="22" y="17.6" width="21" height="4.2" rx="1.7"/><rect x="23" y="20.6" width="2.8" height="5.6" rx="1.1"/>
+      <rect x="39.4" y="20.6" width="2.8" height="5.6" rx="1.1"/></g></g></symbol>
+  <symbol id="i-telescope-tile" viewBox="0 0 40 40"><g fill="currentColor">
+    <g transform="rotate(-32 20 17)"><rect x="4" y="13.4" width="28" height="7.4" rx="1.6"/>
+      <rect x="30" y="11.8" width="6" height="10.6" rx="1.4"/><rect x="0.6" y="14.6" width="4.4" height="5" rx="1.2"/></g>
+    <rect x="17.2" y="21" width="5.6" height="4.6" rx="1.2"/>
+    <path d="M20 24.5 L12.6 38.5 L16.7 38.5 L21 26.4 Z"/><path d="M20 24.5 L27.4 38.5 L23.3 38.5 L19 26.4 Z"/>
+    <path d="M20 24.5 L19.2 38.5 L20.8 38.5 L21 26.4 Z"/></g></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="wrap topbar__inner">
+    <a class="brand" href="./">
+      <span class="brand__mark"><svg class="i"><use href="#i-orbit"/></svg></span>
+      <span class="brand__text"><strong>星海社</strong><em>HOSHIKAI</em></span>
+    </a>
+    <nav class="nav" id="nav" aria-label="主导航">
+      <a href="./"><i><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-stars4"/></svg></i>首页</a>
+      <a href="./forum/1-1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>星图馆</a>
+      <a href="./forum/2-1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>创作所</a>
+      <a href="./forum/3-1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>观测台</a>
+      <a href="./space/1/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>个人空间</a>
+      <a href="./msg/"><i><svg viewBox="-8 -8 16 16" aria-hidden="true"><path d="M-5 0H5M0-5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" vector-effect="non-scaling-stroke"/></svg></i>消息</a>
+    </nav>
+    <div class="tools">
+      <form class="search" role="search" action="./search/" method="get">
+        <svg class="i"><use href="#i-search"/></svg>
+        <input type="search" name="q" placeholder="搜索作品 / 帖子 / 用户" aria-label="站内搜索">
+      </form>
+      <button class="theme-tg" id="themeTg" type="button" aria-label="切换到夜间模式" aria-pressed="false">
+        <svg class="theme-tg__moon" aria-hidden="true"><use href="#i-moon"/></svg>
+        <svg class="theme-tg__sun" aria-hidden="true"><use href="#i-sun"/></svg>
+      </button>
+      <a class="btn btn--ghost" href="./login/">登录</a>
+      <a class="btn btn--solid" href="./register/">注册</a>
+    </div>
+  </div>
+</header>
+
+<main id="top" class="wrap">
+  <nav class="sp-crumb" aria-label="面包屑"><a href="./">首页</a> › <span>版规总则</span></nav>
+
+  <div class="doc">
+    <header class="doc-head">
+      <h1 class="doc-h1" aria-label="版规总则"><span class="doc-h1__fs" id="docFs" aria-hidden="true"></span></h1>
+      <p class="doc-lead">规则不为了让谁闭嘴，是为了让讨论能一直进行下去。看完有异议，去议事厅提。</p>
+      <p class="doc-meta"><span>2026-10-01 生效</span><span>第 3 版</span><span>适用全站</span></p>
+    </header>
+
+    <div class="rules">
+      <nav class="rules__toc" aria-label="章程目录">
+        <p class="rules__toc-h">章程目录</p>
+        <ol class="rules__toc-list" id="rulesToc"></ol>
+      </nav>
+
+      <aside class="rules__side" aria-label="罚则图例与修订">
+        <div class="rules__lg">
+          <p class="rules__lg-t">罚则星等</p>
+          <p class="rules__lg-i"><span class="doc-mag" data-m="1"><i aria-hidden="true"></i>一等</span>封禁</p>
+          <p class="rules__lg-i"><span class="doc-mag" data-m="2"><i aria-hidden="true"></i>二等</span>禁言 30 天</p>
+          <p class="rules__lg-i"><span class="doc-mag" data-m="3"><i aria-hidden="true"></i>三等</span>禁言 7 天</p>
+          <p class="rules__lg-i"><span class="doc-mag" data-m="4"><i aria-hidden="true"></i>四等</span>删帖 / 警告</p>
+          <p class="rules__lg-i"><span class="doc-mag" data-m="5"><i aria-hidden="true"></i>五等</span>提醒</p>
+          <p class="rules__lg-n">一等最亮，也最重。</p>
+        </div>
+        <div class="rules__rev">
+          <p class="rules__lg-t">本版修订</p>
+          <ol class="rules__rev-list">
+            <li><time>2026-10-01</time>新增第十九条「从重」</li>
+            <li><time>2026-07-12</time>明确剧透的判定范围</li>
+            <li><time>2026-03-01</time>首版施行</li>
+          </ol>
+        </div>
+      </aside>
+
+      <div class="rules__doc" id="rulesDoc">
+        <section class="rules__ch" id="c1" aria-labelledby="c1h">
+          <h2 class="rules__ch-h" id="c1h"><span class="rules__ch-n">01</span>总则</h2>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第一条</span>适用范围</h3>
+            <p class="rule__p">本站是 galgame 讨论社区。本规则适用于全部板块、私信、个人空间与站内评论——在站内说的话，出了帖子也算。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第二条</span>账号责任</h3>
+            <p class="rule__p">账号下的一切行为由持有人负责。共享、代管、借用账号产生的处置一并记在原账号上，不接受「不是我发的」作为免责理由。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第三条</span>版本与生效</h3>
+            <p class="rule__p">本版自 2026-10-01 起生效。涉及处罚尺度的修订，提前 7 天在观测台 · 星海议事厅公示；只改措辞的不公示。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第四条</span>解释与例外</h3>
+            <p class="rule__p">本规则没写到的情形，按两条原则处理：不伤害他人，不破坏讨论。版主可以先行处置，但必须在操作日志里留痕，并在 24 小时内说明依据。</p>
+          </article>
+        </section>
+
+        <section class="rules__ch" id="c2" aria-labelledby="c2h">
+          <h2 class="rules__ch-h" id="c2h"><span class="rules__ch-n">02</span>发帖与内容</h2>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第五条</span>标题</h3>
+            <p class="rule__p">标题要写清楚讨论什么。「求助」「在线等」「有没有人」这类空标题，改标题再发。</p>
+            <p class="rule__pen"><span class="doc-mag" data-m="5"><i aria-hidden="true"></i>五等</span>提醒并代为修改标题。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第六条</span>剧透</h3>
+            <p class="rule__p">涉及剧情走向、结局、关键转折的，标题前加【剧透】，正文开头空三行。回复里的剧透一样算，回帖前先看楼主标没标。</p>
+            <p class="rule__pen"><span class="doc-mag" data-m="4"><i aria-hidden="true"></i>四等</span>删除剧透内容；同帖三次以上按三等处理。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第七条</span>板块</h3>
+            <p class="rule__p">按内容发到对应子板块：作品讨论去星图馆，二创去创作所，闲聊与求助去观测台。发错了版主会移动，不扣分。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第八条</span>刷屏</h3>
+            <p class="rule__p">同一板块 24 小时内连发 5 条以上无实质内容的主题，或把一段话拆成十几层楼，都算刷屏。水楼可以盖，但要一层说一件事。</p>
+            <p class="rule__pen"><span class="doc-mag" data-m="3"><i aria-hidden="true"></i>三等</span>合并或删除多余楼层，禁言 24 小时。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第九条</span>站外引流</h3>
+            <p class="rule__p">不得发布以导流为目的的群号、二维码、网盘跳转或下载站链接。资源讨论请留在站内，链接只指向可公开核验的原出处。</p>
+            <p class="rule__pen"><span class="doc-mag" data-m="2"><i aria-hidden="true"></i>二等</span>删除并禁言 7 天；批量发布的按一等处理。</p>
+          </article>
+        </section>
+
+        <section class="rules__ch" id="c3" aria-labelledby="c3h">
+          <h2 class="rules__ch-h" id="c3h"><span class="rules__ch-n">03</span>资源与版权</h2>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第十条</span>转载</h3>
+            <p class="rule__p">转载须注明原作者与原出处，正文给出原帖链接。作者明确表示不接受转载的，只贴链接，不搬全文。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第十一条</span>汉化与补丁</h3>
+            <p class="rule__p">只发布已获汉化组授权的补丁。未授权的补丁可以讨论、可以问进度，不提供下载；也不要用缩写、暗号绕过这条。</p>
+            <p class="rule__pen"><span class="doc-mag" data-m="4"><i aria-hidden="true"></i>四等</span>删除附件与下载链接，记警告一次。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第十二条</span>失效资源</h3>
+            <p class="rule__p">资源失效请在原帖回复，或报至观测台 · 求助信号塔。另开新帖刷「求补档」，按刷屏处理。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第十三条</span>商业内容</h3>
+            <p class="rule__p">涉及付费内容、代购、众筹、二手交易的，先到议事厅报备，说明标的与交付方式。未报备的按站外引流处理。</p>
+          </article>
+        </section>
+
+        <section class="rules__ch" id="c4" aria-labelledby="c4h">
+          <h2 class="rules__ch-h" id="c4h"><span class="rules__ch-n">04</span>互动与秩序</h2>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第十四条</span>对人的攻击</h3>
+            <p class="rule__p">可以批评作品、批评观点，不可以攻击作者与同好。别拿「我说话直」当免罪符。</p>
+            <p class="rule__pen"><span class="doc-mag" data-m="3"><i aria-hidden="true"></i>三等</span>警告一次；三个月内再犯，禁言 7 天。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第十五条</span>隐私</h3>
+            <p class="rule__p">不得公开他人的真实姓名、住址、联系方式、社交账号，也不得拼接公开信息去定位某个人。私信截图外传同样适用。</p>
+            <p class="rule__pen"><span class="doc-mag" data-m="1"><i aria-hidden="true"></i>一等</span>删除并封禁，不接受申诉。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第十六条</span>回复中的剧透</h3>
+            <p class="rule__p">回复剧透同第六条。多层楼里混着剧透的，版主可以整层折叠，不必逐句挑。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第十七条</span>挖坟</h3>
+            <p class="rule__p">回复超过 90 天没有新内容的主题视为挖坟。精华帖、资源补档、楼主更新除外。</p>
+            <p class="rule__pen"><span class="doc-mag" data-m="5"><i aria-hidden="true"></i>五等</span>首次提醒，不扣分。</p>
+          </article>
+        </section>
+
+        <section class="rules__ch" id="c5" aria-labelledby="c5h">
+          <h2 class="rules__ch-h" id="c5h"><span class="rules__ch-n">05</span>处罚</h2>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第十八条</span>阶梯</h3>
+            <p class="rule__p">提醒 → 警告（记录 30 天）→ 删帖 → 禁言 24 小时 → 禁言 7 天 → 禁言 30 天 → 封禁。不是每次都要走完，跳档要写理由。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第十九条</span>从重</h3>
+            <p class="rule__p">涉及未成年人、隐私、诈骗、盗版的，跳过阶梯直接禁言 30 天或封禁；构成违法的，保留证据并移交。</p>
+            <p class="rule__pen"><span class="doc-mag" data-m="1"><i aria-hidden="true"></i>一等</span>封禁，并公示处置结果（隐去个人信息）。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第二十条</span>累计</h3>
+            <p class="rule__p">同一账号 90 天内累计三次警告，按下一档处罚执行。警告到期自动失效，不再累计。</p>
+          </article>
+        </section>
+
+        <section class="rules__ch" id="c6" aria-labelledby="c6h">
+          <h2 class="rules__ch-h" id="c6h"><span class="rules__ch-n">06</span>申诉</h2>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第二十一条</span>渠道</h3>
+            <p class="rule__p">处罚作出后 30 天内，可在「举报处理 · 申诉」提交，附上原帖链接与你的说法。超期不受理，除非有新证据。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第二十二条</span>时限</h3>
+            <p class="rule__p">站务在 3 个工作日内答复。维持原判的，必须写明理由；只回一句「不予受理」的，视为违规操作。</p>
+          </article>
+
+          <article class="rule">
+            <h3 class="rule__h"><span class="rule__n">第二十三条</span>复核</h3>
+            <p class="rule__p">对答复仍有异议，可在议事厅公开提请复核一次。复核由不在原处置链上的站务处理，结论为最终结论。</p>
+          </article>
+        </section>
+
+        <p class="rules__end">以上六章二十三条，自 2026-10-01 起施行。</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <!-- ⚠️ 整块照抄 v3p 首页的 .title：四层背景（CG / 极光 / 星盘 / 流星）+ 内容层 .title__in。
+       星盘和菜单的 DOM 由 footer.js 补；.title 里就地写死深底文字令牌，不跟主题走。 -->
+  <section class="title" aria-label="站点标题画面">
+    <div class="title__bg" aria-hidden="true"></div>
+    <div class="title__aur" aria-hidden="true"></div>
+    <svg class="dial title__dial" aria-hidden="true"></svg>
+    <div class="title__sky" aria-hidden="true"><span class="shoot" style="--x:62%;--y:6%;--a:32deg;--dur:13s;--del:1.5s"></span><span class="shoot" style="--x:78%;--y:18%;--a:28deg;--dur:17s;--del:6.5s"></span><span class="shoot" style="--x:40%;--y:4%;--a:38deg;--dur:19s;--del:11s"></span></div>
+    <div class="wrap title__in">
+      <div class="title__lead">
+        <p class="title__eye">HOSHIKAI<span> · GALGAME OBSERVERS</span> · <span data-logdate></span></p>
+        <p class="title__logo"><span class="title__mk"><span class="lt title__c" style="--i:0">星</span><span class="lt title__c" style="--i:1">海</span><span class="lt title__c" style="--i:2">社</span><svg class="title__orb" viewBox="0 0 200 60" aria-hidden="true"><ellipse cx="100" cy="30" rx="96" ry="22"/><circle class="title__moon" r="4"><animateMotion dur="11s" repeatCount="indefinite" path="M4 30a96 22 0 1 0 192 0a96 22 0 1 0-192 0"/></circle></svg></span><span class="title__en">HOSHIKAI · Night Log</span></p>
+        <p class="title__tag" data-tagline></p>
+        <div class="menuw"><svg class="menu__cst" aria-hidden="true"></svg><ol class="menu">
+        <li><a class="menu__i" href="./sitemap/"><span class="menu__k">SITEMAP</span><span class="menu__t">站点地图</span><span class="menu__d">全站页面索引</span></a></li>
+        <li><a class="menu__i" href="./rules/"><span class="menu__k">RULES</span><span class="menu__t">版规总则</span><span class="menu__d">观测前先读这个</span></a></li>
+        <li><a class="menu__i" href="./links/"><span class="menu__k">LINKS</span><span class="menu__t">友情链接</span><span class="menu__d">邻接的天文台</span></a></li>
+        <li><a class="menu__i" href="./contact/"><span class="menu__k">CONTACT</span><span class="menu__t">联系我们</span><span class="menu__d">给理事会发信</span></a></li>
+        <li><span class="menu__i is-off" aria-disabled="true"><span class="menu__k">HISTORY</span><span class="menu__t">历史</span><span class="menu__d">观测记录 · 还没做</span></span></li>
+        </ol></div>
+      </div>
+      <dl class="title__sys" aria-label="站点读数">
+        <div><dt>观测者</dt><dd data-stat="members">—</dd></div>
+        <div><dt>星体</dt><dd data-stat="threads">—</dd></div>
+        <div><dt>今夜新帖</dt><dd data-stat="todayPosts">—</dd></div>
+        <div><dt>在台</dt><dd data-stat="online">—</dd></div>
+      </dl>
+      <div class="title__ann">
+        <span class="title__plate">理事会<small data-ann-tag></small></span>
+        <p class="title__annT"><a href="./board.html?b=1-1" data-ann-title></a></p>
+        <p class="title__annB"><span class="sr" data-ann-body></span><span class="tw" aria-hidden="true"></span><span class="caret" aria-hidden="true"></span></p>
+        <svg class="title__next" viewBox="0 0 10 8" aria-hidden="true"><path d="M0 0l5 8 5-8z" fill="currentColor"/></svg>
+      </div>
+    </div>
+  </section>
+  <div class="wrap footer__note">本页为排版设计稿演示 · 规则条文为虚构</div>
+</footer>
+
+<script src="./shared/data.js"></script>
+<script src="./theme.js"></script>
+<script src="./session.js"></script>
+<script src="./docs.js"></script>
+
+<!-- 反向验证注入点：带 ?css= / ?js= 才执行 -->
+<script>(function () {
+  var q = new URLSearchParams(location.search);
+  var dec = function (s) { return decodeURIComponent(escape(atob(s))); };
+  var css = q.get('css'), js = q.get('js');
+  if (css) { try { var st = document.createElement('style'); st.textContent = dec(css); document.head.appendChild(st); } catch (e) { console.error('inject css 失败', e); } }
+  if (js) { try { (0, eval)(dec(js)); } catch (e) { console.error('inject js 失败', e); } }
+})();</script>
+<script src="./menu.js"></script>
+<script src="./starbtn.js"></script>
+<script src="./footer.js"></script>
+</body>
+</html>

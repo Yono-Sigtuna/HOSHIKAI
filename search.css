@@ -1,0 +1,193 @@
+/* 星海社 · 站内搜索
+   ══════════════════════════════════════════════════════════════════
+   这一页**刻意什么都不画**。它是工具页：搜索框 / 筛选 / 排序 / 一列结果 / 空态。
+
+   用户 2026-10-15 的原话：「搜索你就别搞这种星系图形了吧…看都看不懂，没什么意义啊」
+   —— 与消息页那一轮是**同一句话**（「往正常的消息提醒做…我们要有自己的特色」）。
+   站里的天文母题在这一页住在**材料**里，不住在图里：
+
+     · 星等徽章 `.mag`   —— 与 app.js / board.js / topic.js / auth.js 逐字同一个构造
+     · 板块色相标签      —— `hsl(var(--h) …)` 那套派生，跟板块页的卡片同一个色
+     · 金色命中高亮      —— `--y300` / `--y-ink`，站里「重要」那一档
+     · 类型图标          —— #i-reply / #i-book / #i-user
+
+   ⚠️ 根类叫 `.srch`，**不能叫 `.sr`** —— 站里 `.sr` 是无障碍工具类
+      （style.css:322：`position:absolute;width:1px;height:1px;clip-path:inset(50%)`）。
+      曾用 `.sr` ⇒ 整块搜索区被裁成 1×1，DOM 里 95KB 内容、零报错、截图全空。 */
+
+/* ══════════════════ 版面 ══════════════════ */
+.srch { padding-bottom: 40px; }
+.srch-crumb { font-size: 13px; color: var(--ink-faint); padding: 18px 0 0; }
+.srch-crumb a { color: var(--link); text-decoration: none; }
+.srch-crumb a:hover { text-decoration: underline; }
+
+/* ---------- 查询条 ---------- */
+.srch-q {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 14px 0 0; padding: 16px 20px;
+  background: var(--surface); border: 1.5px solid var(--c400);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-sm);
+}
+.srch-q__field {
+  flex: 1 1 320px; min-width: 0; display: flex; align-items: center; gap: 10px;
+  background: var(--c100); border: 1.5px solid var(--line); border-radius: var(--r-pill);
+  padding: 0 8px 0 14px; height: 42px;
+}
+.srch-q__field:focus-within { border-color: var(--c700); box-shadow: 0 0 0 3px var(--c200); }
+.srch-q__field .i { width: 17px; height: 17px; flex: none; color: var(--c700); }
+.srch-q__in {
+  flex: 1 1 auto; min-width: 0; border: 0; background: none; outline: none;
+  font: inherit; font-size: 15px; color: var(--ink); height: 100%;
+}
+.srch-q__in::placeholder { color: var(--ink-faint); opacity: 1; }
+.srch-q__go {
+  flex: none; height: 32px; padding: 0 18px; border: 0; border-radius: var(--r-pill);
+  background: var(--deep-grad); color: #fff; font: inherit; font-size: 14px; cursor: pointer;
+}
+.srch-q__go:hover { filter: brightness(1.08); }
+.srch-q__go:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; }
+.srch-q__meta { flex: 1 1 100%; font-size: 13px; color: var(--ink-faint); margin: 0; }
+.srch-q__meta b { color: var(--ink-deep); font-size: 15px; }
+
+/* ⚠️ 命中高亮**必须切在转义之前**（见 search.js 的 hl()），
+      这里只管颜色 —— 用站里的金色，不是浏览器默认的黄底黑字。 */
+.srch mark { background: var(--y300); color: var(--y-ink); border-radius: 3px; padding: 0 1px; }
+
+/* ---------- 工具条：左边筛选，右边排序 ---------- */
+.srch-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 16px 0 0; padding: 0 2px;
+}
+.srch-bar__r { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-faint); }
+
+.srch-kinds { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.srch-kind {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px;
+  border: 1.5px solid var(--line); border-radius: var(--r-pill); background: var(--surface);
+  color: var(--ink-soft); font: inherit; font-size: 13px; text-decoration: none; white-space: nowrap;
+}
+.srch-kind .i { width: 15px; height: 15px; }
+.srch-kind b { font-size: 14px; color: var(--ink-deep); }
+.srch-kind:hover { border-color: var(--c600); }
+.srch-kind[aria-current="true"] { background: var(--c200); border-color: var(--c700); color: var(--ink-deep); }
+.srch-kind:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; }
+
+.srch-sorts { display: flex; align-items: center; gap: 4px; }
+.srch-sort {
+  height: 28px; padding: 0 12px; border: 1.5px solid transparent; border-radius: var(--r-pill);
+  background: none; color: var(--ink-soft); font: inherit; font-size: 13px; text-decoration: none;
+}
+.srch-sort:hover { background: var(--c100); }
+.srch-sort[aria-current="true"] { border-color: var(--c400); background: var(--c100); color: var(--ink-deep); }
+.srch-sort:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; }
+
+/* ---------- 结果列表 ---------- */
+.srch-list {
+  list-style: none; margin: 12px 0 0; padding: 0;
+  /* 结果出现时淡入 */
+  animation: srch-fade-in .42s var(--ease);
+}
+
+@keyframes srch-fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .srch-list { animation: none; }
+}
+/* ⚠️ 四个格子一律**显式**给 grid-area。靠自动放置排会让只写了一条轴的项互相打架，
+   把星等徽章塞进第 2 列、标题挤到第 3 列，整行左右颠倒（踩过）。
+   左边那格是**缩略图**：116px 宽、16:9 ⇒ 约 65px 高，正好把两行文字夹在中间。 */
+.srch-row {
+  display: grid; grid-template-columns: 116px minmax(0, 1fr) auto; grid-template-rows: auto auto;
+  gap: 4px 14px; padding: 12px 16px; border-bottom: 1px solid var(--line-soft);
+  align-content: center;
+}
+.srch-row:first-child { border-top: 1px solid var(--line-soft); }
+.srch-row:hover { background: var(--c100); }
+.srch-row__c { grid-area: 1 / 1 / 3 / 2; align-self: center; }
+/* 缩略图本体。`.thumb`（style.css）已经给了圆角 / overflow / background-size，
+   这里只补尺寸；`is-fallback` 那层程序化星点在 style.css 里，不用重复。 */
+.srch-row__ph { width: 100%; aspect-ratio: 16 / 9; }
+/* 用户行不用封面，用头像。放大会破坏 `.av` 的比例，所以只覆盖尺寸那一档。 */
+.srch-row__av { justify-self: center; width: 46px; height: 46px; font-size: 19px; }
+.srch-row__t { grid-area: 1 / 2 / 2 / 3; font-size: 15px; font-weight: 600; color: var(--ink-deep); text-decoration: none; line-height: 1.45; }
+.srch-row__t:hover { color: var(--hot-link); text-decoration: underline; }
+.srch-row__t:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; border-radius: 3px; }
+.srch-row__s { grid-area: 2 / 2 / 3 / 3; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--ink-faint); margin-top: 3px; }
+.srch-row__r { grid-area: 1 / 3 / 3 / 4; align-self: center; text-align: right; white-space: nowrap; }
+.srch-row__x { display: block; font-size: 12px; color: var(--ink-faint); margin-top: 4px; }
+.srch-row__bq {
+  font-style: normal; padding: 1px 7px; border-radius: var(--r-pill); font-size: 11px;
+  background: hsl(var(--h) var(--hue-bg-s) var(--hue-bg-l));
+  color: hsl(var(--h) var(--hue-fg-s) var(--hue-fg-l));
+}
+.srch-row__hit {
+  padding: 1px 7px; border-radius: var(--r-pill); font-size: 11px;
+  background: var(--y200); color: var(--y-text); border: 1px solid var(--y300);
+}
+/* 类型小标签：**中性**的。原来跟「命中字段」共用金色，两块金挤在一行里分不出主次 ——
+   金色在这站里是「重要」那一档，一行只该有一处。 */
+.srch-row__kind {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 1px 7px; border-radius: var(--r-pill); font-size: 11px;
+  background: var(--c100); color: var(--ink-soft); border: 1px solid var(--line-soft);
+}
+.srch-row__kind .i { width: 11px; height: 11px; }
+.srch-row__by { color: var(--by); }
+
+/* 「第 1–20 条 · 共 110 条」 */
+.srch-slice { margin: 14px 2px 0; font-size: 12px; color: var(--ink-faint); }
+
+/* 星等徽章 —— 构造与 app.js / board.js / topic.js / auth.js 那四处逐字一致 */
+.srch .mag {
+  display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--y-text);
+  padding: 1px 8px; border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--y400) calc(var(--glowAmt) * 55%), var(--y100));
+  border: 1px solid var(--y300);
+}
+.srch .mag .i { width: 12px; height: 12px; fill: currentColor; stroke: none; }
+.srch .mag b { font-size: 12px; }
+
+/* ---------- 空态 ---------- */
+.srch-empty { text-align: center; padding: 56px 20px 64px; }
+.srch-empty__h { font-family: var(--font-display); font-size: 20px; color: var(--ink-deep); margin: 0 0 8px; }
+.srch-empty p { font-size: 14px; color: var(--ink-soft); margin: 0 0 18px; }
+.srch-empty__sug { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--ink-faint); }
+.srch-empty__sug a {
+  padding: 5px 12px; border-radius: var(--r-pill); border: 1.5px solid var(--line);
+  background: var(--surface); color: var(--link); text-decoration: none; font-size: 13px;
+}
+.srch-empty__sug a:hover { border-color: var(--c600); }
+
+/* 「先写个词」那态：进来还没搜过 */
+.srch-idle { text-align: center; padding: 48px 20px 56px; }
+.srch-idle__h { font-family: var(--font-display); font-size: 19px; color: var(--ink-deep); margin: 0 0 10px; }
+.srch-idle p { font-size: 13px; color: var(--ink-faint); margin: 0; }
+
+/* ---------- 断点 ---------- */
+@media (max-width: 768px) {
+  .srch-q { padding: 14px; }
+  .srch-bar__r { margin-left: 0; flex-basis: 100%; }
+  /* 窄屏：缩略图窄一档，星等/时间掉到标题下面独占一行。
+     显式 grid-area 要跟着一起改，否则桌面那套 1/3/3/4 会把第三列又从两列格子里挤出来。 */
+  .srch-row { grid-template-columns: 88px minmax(0, 1fr); grid-template-rows: auto auto auto; }
+  .srch-row__c { grid-area: 1 / 1 / 4 / 2; }
+  .srch-row__av { width: 40px; height: 40px; font-size: 17px; }
+  .srch-row__t { grid-area: 1 / 2 / 2 / 3; }
+  .srch-row__s { grid-area: 2 / 2 / 3 / 3; }
+  .srch-row__r { grid-area: 3 / 2 / 4 / 3; align-self: start; text-align: left; margin-top: 2px; }
+  .srch-row__x { display: inline; margin: 0 0 0 8px; }
+}
+@media (max-width: 560px) {
+  .srch-q__field { flex: 1 1 100%; }
+  .srch-q__go { width: 100%; }
+  .srch-kind { padding: 0 11px; }
+  .srch-row { grid-template-columns: 72px minmax(0, 1fr); gap: 4px 10px; padding: 11px 12px; }
+}
+
+/* 本页零动画（元素不动、没有常驻动效），这一段是给将来留的落点，不是当前需要 */
+@media (prefers-reduced-motion: reduce) {
+  .srch *, .srch *::before, .srch *::after { transition: none !important; animation: none !important; }
+}

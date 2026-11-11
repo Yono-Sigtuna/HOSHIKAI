@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" role="img" aria-label="">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="hsl(256 54% 46%)"/>
+<stop offset="1" stop-color="hsl(321 62% 19%)"/>
+</linearGradient>
+<radialGradient id="gl" cx="0.40" cy="0.68" r="0.72">
+<stop offset="0" stop-color="hsl(268 84% 64%)" stop-opacity=".58"/>
+<stop offset="1" stop-color="hsl(268 84% 64%)" stop-opacity="0"/>
+</radialGradient>
+</defs>
+<rect width="320" height="180" fill="url(#bg)"/>
+<rect width="320" height="180" fill="url(#gl)"/>
+<g fill="none" stroke="#ffffff" stroke-opacity=".26" stroke-width="1"><ellipse cx="160" cy="90" rx="110" ry="44" transform="rotate(5.5 160 90)"/><ellipse cx="160" cy="90" rx="74" ry="30" transform="rotate(5.5 160 90)"/></g>
+<g fill="#ffffff"><circle cx="135.4" cy="40.8" r="1.67" opacity="0.64"/><circle cx="262.0" cy="27.6" r="2.05" opacity="0.75"/><circle cx="258.8" cy="37.4" r="2.29" opacity="0.65"/><circle cx="254.4" cy="151.5" r="0.85" opacity="0.46"/><circle cx="184.4" cy="156.4" r="2.20" opacity="0.90"/><circle cx="296.4" cy="100.5" r="1.81" opacity="0.93"/></g>
+<g stroke="#f6d889" stroke-width="1.5" stroke-linecap="round" opacity=".9"><path d="M39.4 104.7H47.4M43.4 100.7V108.7"/></g>
+</svg>

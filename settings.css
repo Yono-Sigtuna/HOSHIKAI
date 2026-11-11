@@ -1,0 +1,218 @@
+/* 星海社 · 观测者校准台（./settings/）
+   ------------------------------------------------------------------
+   不是一个后台管理页，是**在站里调你自己**：
+   · 左边一张「观测证」实时预览——星名、头像色相、星等，改哪一样它当场变；
+   · 右边六块校正面板；顶部只有一行说明，底部的保存条只在有改动时浮出来；
+   · 输入控件全部走站内底座（`.set__in` / `.set__area` 已加进 style.css 的名单），
+     不另起一套「设置页专用输入框」。
+   形状/材料取站点令牌：白面卡、1px line-soft、16px 圆角、金色只给「当前页」与开关的「开」。 */
+
+.set { padding-top: 26px; }
+
+/* ── 位置与抬头 ── */
+.set-crumb { display: flex; align-items: center; gap: 8px; margin: 0 0 18px; font-size: 12.5px; color: var(--ink-faint); }
+.set-crumb a { color: var(--ink-soft); }
+.set-crumb a:hover { color: var(--link); }
+.set-crumb b { color: var(--ink-deep); font-weight: 600; }
+
+.set-hero { display: flex; align-items: flex-end; gap: 20px; margin: 0 0 26px; padding-bottom: 18px; border-bottom: 1px solid var(--line-soft); }
+/* 页面抬头就是站里的格子条（望远镜 + 逐格字 + 星环封口） */
+.set-h1 { display: block; margin: 0 0 2px; line-height: 0; }
+.set-h1 .fs { --tile: clamp(24px, 2.6vw, 38px); }
+.set-h1__fs { display: inline-block; }
+/* 弧的描线生长。`is-drawn` 由 settings.js 在格子条注入后补上：
+   本页不加载 forum.css（那条通用的 `.is-drawn .orbit__line` 规则在那儿），
+   不补就永远停在 style.css 的 `.js .orbit__line { stroke-dashoffset: 1200 }`。 */
+.set-h1.is-drawn .orbit__line { stroke-dashoffset: 0; }
+.set-hero p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+.set-hero__no { margin-left: auto; flex: none; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .14em; color: var(--ink-faint); }
+
+/* ── 两栏 ── */
+.set-grid { display: grid; grid-template-columns: 264px minmax(0, 1fr); gap: 30px; align-items: start; }
+/* 顶栏是 sticky 的（68px），左栏吸顶要让开它，否则观测证会被压在顶栏下 */
+.set-rail { position: sticky; top: 88px; display: grid; gap: 14px; }
+.set-panels { min-width: 0; }
+
+/* 观测证（实时预览） */
+.set-id {
+  padding: 18px 18px 16px;
+  border: 1px solid var(--line-soft); border-radius: var(--r-lg);
+  /* 观测证 = 一小片星野：站点的星纹（--hud-stars，随主题翻）+ 七颗手摆的星点
+     + 底色渐变。星点用站内两档色：--hud-ice-s（浅底墨蓝 / 深底冰白）与金色弱档。 */
+  background-image:
+    radial-gradient(circle 1.6px at 14% 22%, color-mix(in srgb, var(--hud-ice-s) 52%, transparent), transparent 62%),
+    radial-gradient(circle 1.1px at 30% 64%, color-mix(in srgb, var(--hud-ice-s) 42%, transparent), transparent 62%),
+    radial-gradient(circle 1.3px at 82% 26%, color-mix(in srgb, var(--hud-gold-w) 80%, transparent), transparent 62%),
+    radial-gradient(circle 1px at 68% 12%, color-mix(in srgb, var(--hud-ice-s) 36%, transparent), transparent 62%),
+    radial-gradient(circle 1.5px at 90% 58%, color-mix(in srgb, var(--hud-ice-s) 46%, transparent), transparent 62%),
+    radial-gradient(circle 1px at 22% 88%, color-mix(in srgb, var(--hud-gold-w) 70%, transparent), transparent 62%),
+    radial-gradient(circle 1.1px at 76% 84%, color-mix(in srgb, var(--hud-ice-s) 40%, transparent), transparent 62%),
+    var(--hud-stars),
+    linear-gradient(160deg, var(--c100), var(--surface) 62%);
+  background-repeat: no-repeat;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+.set-id__av {
+  display: grid; place-items: center;
+  width: 56px; height: 56px; margin: 2px auto 10px;
+  border-radius: 50%; font-family: var(--font-round); font-size: 22px; font-weight: 700;
+  background: hsl(var(--ah, 218) 62% var(--av-bg-l)); color: hsl(var(--ah, 218) 55% var(--av-fg-l));
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 4.5px hsl(var(--ah, 218) 68% 62% / .45);
+  transition: background .2s var(--ease), box-shadow .2s var(--ease);
+}
+.set-id__nm { display: block; font-family: var(--font-round); font-size: 16px; font-weight: 700; color: var(--ink-deep); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.set-id__meta { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px 0 0; font-size: 12px; color: var(--ink-faint); }
+/* 星等用站里那枚 .mag：金四角星 + 等宽数字（不是为设置页另造的徽章） */
+.set-id__meta .mag { margin-left: 0; font-size: 12px; color: var(--ink-soft); }
+.set-id__meta .mag b { color: var(--y-ink); }
+.set-id__live { display: inline-flex; align-items: center; gap: 6px; margin: 12px 0 0; font-size: 11.5px; color: var(--ink-faint); }
+.set-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--y600); }
+
+/* 分区导航 */
+.set-nav {
+  display: grid; gap: 2px; padding: 6px;
+  border: 1px solid var(--line-soft); border-radius: var(--r-lg);
+  background: var(--surface); box-shadow: var(--shadow-sm);
+}
+.set-nav a {
+  position: relative; display: flex; align-items: center; height: 38px; padding: 0 12px;
+  border-radius: 9px; font-size: 13.5px; color: var(--ink-soft);
+  transition: background-color .16s var(--ease), color .16s var(--ease);
+}
+.set-nav a:hover { background: var(--c100); color: var(--ink-deep); }
+.set-nav a[aria-current="true"] {
+  background: var(--c100); color: var(--ink-deep); font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--y600);
+}
+.set-nav a:focus-visible { outline: 2px solid var(--c700); outline-offset: 2px; }
+
+/* ── 校正面板 ── */
+.set-sec {
+  margin: 0 0 18px; padding: 22px 24px 8px;
+  border: 1px solid var(--line-soft); border-radius: var(--r-lg);
+  background: var(--surface); box-shadow: var(--shadow-sm);
+}
+.set-sec__hd { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 16px; align-items: baseline; padding-bottom: 14px; border-bottom: 1px solid var(--line-soft); }
+.set-sec__hd h2 { display: flex; align-items: center; gap: 7px; margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--ink-deep); }
+.set-sec__hd h2 .i { width: 18px; height: 18px; flex: none; color: var(--y-text); fill: var(--y600); stroke: none; }
+.set-sec__hd p { margin: 0; font-size: 12.5px; line-height: 1.7; color: var(--ink-soft); }
+
+.set-rows { display: block; }
+.set-row { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 24px; align-items: start; padding: 18px 0; border-bottom: 1px solid var(--line-soft); }
+.set-row:last-child { border-bottom: 0; }
+.set-row--danger { border-bottom: 0; }
+.set-lbl label, .set-lbl__t { display: block; font-size: 13.5px; font-weight: 600; color: var(--ink-deep); }
+.set-lbl p { margin: 4px 0 0; font-size: 12px; line-height: 1.65; color: var(--ink-faint); }
+.set-ctl { min-width: 0; }
+.set-ctl--stack { display: grid; gap: 10px; }
+.set-static { margin: 10px 0 0; font-size: 13px; color: var(--ink-soft); }
+
+/* 输入 + 右下角字数
+   ⚠️ 这里只写**版式**（高度/字号/内边距）：边框、底色、焦点、禁用都归 style.css 的输入底座，
+      在这儿再写一遍 border/background 只会多一份打架的声明（§23 / 2.67）。 */
+.set__in { display: block; width: 100%; height: 42px; padding: 0 14px; font: inherit; font-size: 14px; }
+.set__in:focus-visible { outline: 0; }
+.set__area { display: block; width: 100%; min-height: 104px; padding: 10px 14px; font: inherit; font-size: 14px; line-height: 1.7; resize: vertical; }
+.set__area:focus-visible { outline: 0; }
+.set-field { position: relative; }
+.set-field .set__in { width: 100%; padding-right: 56px; }
+.set-field--area .set__area { width: 100%; }
+.set-count { position: absolute; right: 13px; bottom: 13px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); pointer-events: none; }
+.set-field--area .set-count { bottom: 10px; }
+
+/* 分段选择（主题 / 私信范围） */
+.set-choice { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--line-soft); border-radius: 999px; background: var(--c100); }
+.set-choice label { position: relative; display: inline-flex; }
+.set-choice input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; }
+.set-choice span { display: inline-flex; align-items: center; height: 30px; padding: 0 14px; border-radius: 999px; font-size: 13px; color: var(--ink-soft); transition: background-color .16s var(--ease), color .16s var(--ease); }
+.set-choice input:checked + span { background: var(--surface); color: var(--ink-deep); font-weight: 600; box-shadow: var(--shadow-sm); }
+.set-choice input:focus-visible + span { outline: 2px solid var(--c700); outline-offset: 2px; }
+
+/* 通知开关列表 */
+.set-toggles { list-style: none; margin: 0; padding: 0; }
+.set-toggle { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line-soft); }
+.set-toggle:last-child { border-bottom: 0; }
+.set-toggle__ic { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--c100); color: var(--link); }
+.set-toggle__ic .i { width: 17px; height: 17px; }
+.set-toggle b { display: block; font-size: 13.5px; color: var(--ink-deep); }
+.set-toggle p { margin: 3px 0 0; font-size: 12px; color: var(--ink-soft); }
+
+/* 开关：星等刻度（五版里挑定的第 4 版，放大到 46×26）
+   关＝冷灰刻度 + 墨色小星；开＝暖底 + 深金刻度 + 金色大星（带辉光）。
+   日间也分得开，是这一版被选中的原因。 */
+.set-sw {
+  position: relative; flex: none; width: 46px; height: 26px; padding: 0;
+  border: 0; border-radius: 999px; background: var(--c100); cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--c300);
+  transition: background .24s var(--ease), box-shadow .24s var(--ease);
+}
+[data-theme="dark"] .set-sw { background: var(--c200); box-shadow: inset 0 0 0 1px var(--c500); }
+.set-sw__scale {
+  position: absolute; left: 7px; right: 7px; bottom: 7px; height: 8px;
+  background-image: repeating-linear-gradient(90deg, color-mix(in srgb, var(--ink-soft) 46%, transparent) 0 1px, transparent 1px 7px);
+  background-size: 100% 8px;
+}
+.set-sw__scale::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 0;
+  background-image: repeating-linear-gradient(90deg, var(--y700) 0 1.5px, transparent 1.5px 7px);
+  background-size: 100% 8px; transition: width .24s var(--ease);
+}
+.set-sw__star {
+  position: absolute; left: 3px; top: 5px; width: 9px; height: 9px;
+  background: var(--ink-soft);
+  clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%);
+  transition: left .24s var(--ease), top .24s var(--ease), width .24s var(--ease),
+              height .24s var(--ease), background .24s var(--ease), filter .24s var(--ease);
+}
+/* ON 态：金色渐变底 + 星点移右侧放大发光 + 外部发光 */
+.set-sw[aria-checked="true"] {
+  background: linear-gradient(135deg, var(--y300), var(--y400));
+  box-shadow: inset 0 0 0 1px var(--y500), 0 0 10px rgba(240, 200, 94, .3);
+}
+.set-sw[aria-checked="true"] .set-sw__scale::after { width: 100%; }
+.set-sw[aria-checked="true"] .set-sw__star {
+  left: 32px; top: 4px; width: 11px; height: 11px;
+  background: var(--y700);
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--y600) 85%, transparent));
+}
+[data-theme="dark"] .set-sw__scale { background-image: repeating-linear-gradient(90deg, var(--c500) 0 1px, transparent 1px 7px); }
+[data-theme="dark"] .set-sw[aria-checked="true"] { background: var(--c200); box-shadow: inset 0 0 0 1px var(--y600); }
+[data-theme="dark"] .set-sw[aria-checked="true"] .set-sw__scale::after { background-image: repeating-linear-gradient(90deg, var(--y400) 0 1.5px, transparent 1.5px 7px); }
+[data-theme="dark"] .set-sw[aria-checked="true"] .set-sw__star { background: var(--y400); }
+.set-sw:focus-visible { outline: 2px solid var(--c700); outline-offset: 3px; border-radius: 999px; }
+[data-theme="dark"] .set-sw:focus-visible { outline-color: var(--c600); }
+.set-sw[aria-disabled="true"], .set-sw.is-off { opacity: .45; cursor: not-allowed; }
+.set-savebar[hidden] { display: none; }
+.set-savebar__t { font-size: 13px; color: var(--ink-deep); }
+.set-savebar__grow { flex: 1 1 auto; }
+
+/* 开窗里的注销确认 */
+.setPad { padding: 18px 20px 20px; color: var(--hud-ink); font-size: 13px; line-height: 1.75; }
+.setPad p { margin: 0 0 14px; color: var(--hud-ink-soft); }
+.setPad__acts { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ── 断点 ── */
+@media (max-width: 980px) {
+  .set-grid { grid-template-columns: 1fr; gap: 20px; }
+  .set-rail { position: static; grid-template-columns: minmax(0, 1fr); }
+  .set-nav { grid-auto-flow: column; grid-auto-columns: 1fr; overflow-x: auto; }
+  .set-nav a { justify-content: center; height: 36px; padding: 0 10px; white-space: nowrap; }
+}
+@media (max-width: 720px) {
+  .set-hero { align-items: flex-start; }
+  .set-hero h1 { font-size: 24px; }
+  .set-hero__no { display: none; }
+  .set-sec { padding: 18px 16px 6px; }
+  .set-sec__hd { display: block; }
+  .set-sec__hd h2 { margin-bottom: 6px; }
+  .set-row { grid-template-columns: 1fr; gap: 10px; padding: 15px 0; }
+  .set-toggle { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; }
+  .set-toggle__ic { width: 30px; height: 30px; }
+  .set-choice { max-width: 100%; overflow-x: auto; }
+  .set-savebar { bottom: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .set-id__av, .set-nav a, .set-sw, .set-sw::after, .set-choice span { transition: none; }
+}
