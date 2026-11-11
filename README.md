@@ -5,7 +5,7 @@
 
 **在线浏览**：<https://yono-sigtuna.github.io/HOSHIKAI/>
 
-![星海社封面母题 · 轨道环](https://yono-sigtuna.github.io/HOSHIKAI/covers/atlas-0-0.svg)
+![星海社首页 · 星座网格](docs/preview.jpg)
 
 ---
 
